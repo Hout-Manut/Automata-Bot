@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import re
-from typing import Sequence
+from typing import Optional
 
 import hikari
 import lightbulb
 import miru
+import graphviz
 
 from .extensions import error_handler as error
 
@@ -19,6 +20,7 @@ class FA:
         initial: str,
         finals: set[str],
         transitions: dict[tuple[str, str], set[str]],
+        ctx: Optional[lightbulb.Context] = None
     ) -> None:
         if not self.check_valid(states, inputs, initial, finals, transitions):
             raise error.InvalidFAError("The provided values are invalid.")
@@ -27,12 +29,60 @@ class FA:
         self.initial = initial
         self.finals = finals
         self.transitions = transitions
+        self.ctx = ctx
 
     @property
     def is_dfa(self) -> bool:
         return self.check_dfa(
             self.states, self.inputs, self.initial, self.finals, self.transitions
         )
+
+    @property
+    def author_id(self) -> int:
+        """The id of the user who created the FA"""
+        if self.ctx:
+            return self.ctx.author.id
+        return 0
+
+    @property
+    def author_name(self) -> str:
+        """The id of the user who created the FA"""
+        if self.ctx:
+            return self.ctx.author.username
+        return "Unknown"
+
+    def draw_graph(self) -> str:
+        """
+        Draw the FA as a graph.
+
+        Args:
+            None
+        Returns:
+            str: The path to the graph.
+        """
+        file_name = self.author_name
+        graph = graphviz.Digraph(format="png",
+                                 graph_attr={
+                                     'size': '10,10',
+                                     'ratio': '1',
+                                     'dpi': '200',
+                                     'center': 'true',
+                                     'beautify': 'true'
+                                     }
+                                 )
+        for state in self.states:
+            if state in self.finals:
+                graph.node(state, shape="doublecircle")
+            else:
+                graph.node(state, shape="circle")
+        graph.node("", shape="point")
+        graph.edge("", self.initial)
+        for (state, symbol), next_states in self.transitions.items():
+            for next_state in next_states:
+                graph.edge(state, next_state, symbol)
+
+        graph.render(f"storage/graph_cache/{file_name}")
+        return f"storage/graph_cache/{file_name}.png"
 
     @staticmethod
     def check_valid(
@@ -103,6 +153,7 @@ class FA:
         return True
 
 
+
 class NFA(FA):
     pass
 
@@ -135,13 +186,24 @@ class FormView(miru.View):
 class FormModal(miru.Modal):
 
     states = miru.TextInput(
-        label="States", placeholder="q0 q1 q2...", required=True)
+        label="States",
+        placeholder="q0 q1 q2...",
+        required=True
+    )
     inputs = miru.TextInput(
-        label="Inputs", placeholder="a b...", required=True)
-    initial = miru.TextInput(label="Initial state",
-                             placeholder="q0", required=True)
+        label="Inputs",
+        placeholder="a b c...",
+        required=True
+    )
+    initial = miru.TextInput(
+        label="Initial state",
+        placeholder="q0",
+        required=True
+    )
     finals = miru.TextInput(
-        label="Final state(s)", placeholder="q2 q3...", required=True
+        label="Final state(s)",
+        placeholder="q2...",
+        required=True
     )
     transitions = miru.TextInput(
         label="Transition Functions",
@@ -221,6 +283,7 @@ class FormModal(miru.Modal):
             self.initial_value,
             self.finals_value,
             self.transitions_value,
+            ctx,
         )
         self._ctx = ctx
         self.stop()

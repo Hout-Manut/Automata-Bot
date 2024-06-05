@@ -7,7 +7,6 @@ import bot.automata as automata
 test_plugin = lightbulb.Plugin("test")
 
 
-
 @test_plugin.command
 @lightbulb.command("test", "Testing")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
@@ -42,12 +41,12 @@ async def test_fa_cmd(ctx: lightbulb.SlashContext) -> None:
     finals = ", ".join(modal.fa.finals)
     embed.add_field(name="Final States", value=f"{{{finals}}}")
 
+    tf = ""
+    for (k0, k1), v in modal.fa.transitions.items():
+        tf += f"({k0}, {k1}) = {{{', '.join(v)}}}\n"
+    embed.add_field(name=f"Transition Functions", value=tf)
+
     await modal.ctx.respond(embed=embed)
-
-    # await ctx.respond(
-    #     embed=embed
-    #     )
-
     return
 
 
