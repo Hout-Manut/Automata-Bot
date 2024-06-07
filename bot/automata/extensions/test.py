@@ -23,23 +23,25 @@ async def test_fa_cmd(ctx: lightbulb.SlashContext) -> None:
     await builder.create_modal_response(ctx.interaction)
     await modal.wait()
 
-    is_dfa = modal.is_dfa
-    desc = "Non-deterministic" if not is_dfa else "Deterministic"
+    desc = "Deterministic" if modal.is_dfa else "Non-deterministic"
 
     embed = hikari.Embed(
         title=f"{desc} Finite Automation",
         color=0x00CC00
     )
+    name = "State" if len(modal.fa.states) == 1 else "States"
     states = ", ".join(modal.fa.states)
-    embed.add_field(name="States", value=f"{{{states}}}")
+    embed.add_field(name=name, value=f"{{{states}}}")
 
+    name = "Input" if len(modal.fa.states) == 1 else "Inputs"
     inputs = ", ".join(modal.fa.inputs)
-    embed.add_field(name="Inputs", value=f"{{{inputs}}}")
+    embed.add_field(name=name, value=f"{{{inputs}}}")
 
     embed.add_field(name="Initial State", value=modal.fa.initial)
 
     finals = ", ".join(modal.fa.finals)
-    embed.add_field(name="Final States", value=f"{{{finals}}}")
+    name = "Final State" if len(modal.fa.finals) == 1 else "Final States"
+    embed.add_field(name=name, value=f"{{{finals}}}")
 
     tf = ""
     for (k0, k1), v in modal.fa.transitions.items():

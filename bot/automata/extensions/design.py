@@ -1,8 +1,8 @@
 import hikari
 import lightbulb
-import miru
 
 import bot.automata as automata
+
 
 design_command = lightbulb.Plugin("design")
 
@@ -17,11 +17,10 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
     await builder.create_modal_response(ctx.interaction)
     await modal.wait()
 
-    is_dfa = modal.is_dfa
-    desc = "Non-deterministic" if not is_dfa else "Deterministic"
+    desc = "Deterministic" if modal.is_dfa else "Non-deterministic"
 
     embed = hikari.Embed(
-        title=f"{desc} Finite Automation",
+        title=f"{desc} Finite Automation Design",
         color=0x00CC00
     )
     states = ", ".join(modal.fa.states)
@@ -33,7 +32,8 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
     embed.add_field(name="Initial State", value=modal.fa.initial)
 
     finals = ", ".join(modal.fa.finals)
-    embed.add_field(name="Final States", value=f"{{{finals}}}")
+    fs = "Final State" if len(modal.fa.finals) == 1 else "Final States"
+    embed.add_field(name=fs, value=f"{{{finals}}}")
 
     tf = ""
     for (k0, k1), v in modal.fa.transitions.items():
@@ -48,6 +48,5 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
     await modal.ctx.respond(embed=embed)
 
 
-
-def load(bot: lightbulb.BotApp):
+def load(bot: lightbulb.BotApp) -> None:
     bot.add_plugin(design_command)

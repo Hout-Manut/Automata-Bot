@@ -46,7 +46,7 @@ class FA:
 
     @property
     def author_name(self) -> str:
-        """The id of the user who created the FA"""
+        """The name of the user who created the FA"""
         if self.ctx:
             return self.ctx.author.username
         return "Unknown"
@@ -115,7 +115,7 @@ class FA:
         for (state, symbol), next in transitions.items():
             if state not in states:
                 return False
-            if symbol != "" and symbol not in inputs:
+            if symbol != "ε" and symbol not in inputs:
                 return False
             if not next.issubset(states):
                 return False
@@ -151,7 +151,6 @@ class FA:
                     return False  # Transition of a state and symbol leads to 0 or more than 1 states: NFA
 
         return True
-
 
 
 class NFA(FA):
@@ -240,7 +239,7 @@ class FormModal(miru.Modal):
     def initial_value(self) -> str:
         pattern = re.compile(r"\b\w+\b")
         match = pattern.search(self._initial)
-        return match.group(0) if match else ""
+        return match.group(0) if match else "ε"
 
     @property
     def finals_value(self) -> set[str]:

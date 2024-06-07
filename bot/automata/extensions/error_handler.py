@@ -42,5 +42,5 @@ async def error_handler(event: lightbulb.CommandErrorEvent) -> None:
         raise event.exception
 
 
-def load(tenniel):
+def load(tenniel: lightbulb.BotApp) -> None:
     tenniel.add_plugin(error)
