@@ -13,8 +13,10 @@ __version__ = "0.1"
 from .bot import run
 from .classes import (
     FA,
-    FormView,
+    SaveView,
+    SaveFAModal,
     FormModal,
+    FAStringTest,
 )
 from .extensions.error_handler import (
     AutomataError,

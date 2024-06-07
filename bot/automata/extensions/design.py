@@ -23,20 +23,23 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
         title=f"{desc} Finite Automation Design",
         color=0x00CC00
     )
+    name = "State" if len(modal.fa.states) == 1 else "States"
     states = ", ".join(modal.fa.states)
-    embed.add_field(name="States", value=f"{{{states}}}")
+    embed.add_field(name=name, value=f"{{{states}}}")
 
+    name = "Input" if len(modal.fa.states) == 1 else "Inputs"
     inputs = ", ".join(modal.fa.inputs)
-    embed.add_field(name="Inputs", value=f"{{{inputs}}}")
+    embed.add_field(name=name, value=f"{{{inputs}}}")
 
     embed.add_field(name="Initial State", value=modal.fa.initial)
 
     finals = ", ".join(modal.fa.finals)
-    fs = "Final State" if len(modal.fa.finals) == 1 else "Final States"
-    embed.add_field(name=fs, value=f"{{{finals}}}")
+    name = "Final State" if len(modal.fa.finals) == 1 else "Final States"
+    embed.add_field(name=name, value=f"{{{finals}}}")
 
     tf = ""
     for (k0, k1), v in modal.fa.transitions.items():
+        k1 = "ε" if k1 == "" else k1
         tf += f"({k0}, {k1}) = {{{', '.join(v)}}}\n"
     embed.add_field(name=f"Transition Functions", value=tf)
 
