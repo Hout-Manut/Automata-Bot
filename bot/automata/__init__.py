@@ -11,7 +11,7 @@ DEFAULT_GUILDS = [int(x) for x in os.getenv("GUILDS").split(',')]
 __version__ = "0.1"
 
 from .bot import run
-from .classes import (
+from ._classes import (
     FA,
     SaveView,
     SaveFAModal,

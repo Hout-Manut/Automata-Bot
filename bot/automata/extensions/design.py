@@ -43,7 +43,7 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
         tf += f"({k0}, {k1}) = {{{', '.join(v)}}}\n"
     embed.add_field(name=f"Transition Functions", value=tf)
 
-    path = modal.fa.draw_graph()
+    path = modal.fa.draw_diagram()
     path = "C:/Users/Manut/Desktop/Automata Bot/" + path
     image = hikari.File(path, filename="automata.png")
     embed.set_image(image)
