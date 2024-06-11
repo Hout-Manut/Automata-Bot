@@ -10,6 +10,7 @@ import hikari
 import lightbulb
 import miru
 import miru.modal
+import miru.view
 
 from .extensions import error_handler as error
 
@@ -149,6 +150,33 @@ class FA(ABC):
 
     @abstractmethod
     def is_nfa(self) -> bool: ...
+    
+    def get_values(self) -> tuple[str]:
+        states = list(self.states)
+        states.sort()
+        states_str = " ".join(states)
+        
+        alphabets = list(self.alphabets)
+        alphabets.sort()
+        alphabets_str = " ".join(alphabets)
+        
+        final_states = list(self.final_states)
+        final_states.sort()
+        final_states_str = " ".join(final_states)
+        
+        tf = ""
+        for (s_state, symbol), n_states in self.transition_functions.items():
+            for n_state in n_states:
+                tf += f"{s_state},{symbol}={n_state}\n"
+        tf = tf.strip()
+        
+        return (
+            states_str,
+            alphabets_str,
+            self.start_state,
+            final_states_str,
+            tf,
+        )
 
     def get_embed(
         self,
@@ -431,9 +459,28 @@ class FAStringResult:
         return self.passed
 
 
-class FormModal(miru.Modal):
+class ActionView(miru.View):
+    """Class for actions you can do under a FA embed."""
+
+    def __init__(
+        self,
+        inter: lightbulb.SlashContext,
+        fa: FA,
+        *,
+        timeout: float | int | timedelta | None = 300,
+        autodefer: bool | miru.AutodeferOptions = True,
+    ) -> None:
+        self._inter = inter
+        self._fa = fa
+        super().__init__(timeout=timeout, autodefer=autodefer)
+
+    async def edit_fa(self, ctx: miru.ViewContext, btn: miru.Button) -> None:
+        pass
+
+
+class InputModal(miru.Modal):
     STATES_PATTERN = re.compile(r"\b\w+\b")
-    ALPHABETS_PATTERN = re.compile(r"\b\w+\b")
+    ALPHABETS_PATTERN = re.compile(r"\w+")
     START_STATE_PATTERN = re.compile(r"\b\w+\b")
     FINAL_STATES_PATTERN = re.compile(r"\b\w+\b")
     TF_PATTERN = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
@@ -550,3 +597,55 @@ class FormModal(miru.Modal):
         )
         self._ctx = ctx
         self.stop()
+
+
+class EditModal(miru.Modal):
+    STATES_PATTERN = re.compile(r"\b\w+\b")
+    ALPHABETS_PATTERN = re.compile(r"\w")
+    START_STATE_PATTERN = re.compile(r"\b\w+\b")
+    FINAL_STATES_PATTERN = re.compile(r"\b\w+\b")
+    TF_PATTERN = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
+
+    def __init__(
+        self,
+        fa: FA,
+        title: str | None = "Edit FA Data",
+        *,
+        custom_id: str | None = None,
+        timeout: float | int | timedelta | None = 300,
+    ) -> None:
+        super().__init__(title, custom_id=custom_id, timeout=timeout)
+        self._fa = fa
+        values = fa.get_values()
+        self._states = miru.TextInput(
+            label="States",
+            value=values[0],
+            placeholder=values[0],
+            required=True,
+        )
+        self._alphabets = miru.TextInput(
+            label="Alphabets",
+            value=values[1],
+            placeholder=values[1],
+            required=True,
+        )
+        self._start_state = miru.TextInput(
+            label="Start State",
+            value=values[2],
+            placeholder=values[2],
+            required=True,
+        )
+        self._final_states = miru.TextInput(
+            label="Final State(s)",
+            value=values[3],
+            placeholder=values[3],
+            required=True,
+        )
+        self._transition_functions = miru.TextInput(
+            label="Transition Functions",
+            value=values[4],
+            placeholder=f"state,symbol(None for ε)=state\n{values[4]}",
+            required=True,
+        )
+        
+        self.add_item(self._states).add_item(self._alphabets).add_item(self._start_state).add_item(self._final_states).add_item(self._transition_functions)  # wtf
