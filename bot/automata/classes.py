@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import re
-import re
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import graphviz
 import hikari
@@ -15,12 +14,7 @@ import miru.modal
 from .extensions import error_handler as error
 
 
-NFATransitions = dict[tuple[str, str], set[str]]
-DFATransitions = dict[tuple[str, str], str]
-
-
 class FA(ABC):
-
     """
     Abstract base class representing a Finite Automaton (FA).
 
@@ -34,7 +28,7 @@ class FA(ABC):
         alphabets: set[str] = set(),
         start_state: str = "",
         final_states: set[str] = set(),
-        transition_functions: NFATransitions | DFATransitions = {},
+        transition_functions: dict[tuple[str, str], set[str]] = {},
         ctx: lightbulb.Context | None = None,
     ) -> None:
         """
@@ -45,7 +39,7 @@ class FA(ABC):
             alphabets (set[str]): The set of input symbols in the FA.
             start_state (str): The start state in the FA.
             final_states (set[str]): The set of accepted states in the FA.
-            transition_functions (NFATransitions | DFATransitions): The transition function in the FA.
+            transition_functions (dict[tuple[str, str], set[str]]): The transition function in the FA.
             ctx (lightbulb.Context | None): The context of the command used. Defaults to None.
 
         Raises:
@@ -165,16 +159,12 @@ class FA(ABC):
         color: hikari.Colourish | None = None,
         colour: hikari.Colorish | None = None,
         time_stamp: datetime | None = None,
-
         field_inline: bool | None = False,
-
         footer_text: str | None = None,
         footer_icon: hikari.Resourceish | None = None,
-
         author_name: str | None = None,
         author_url: str | None = None,
         author_icon: hikari.Resourceish | None = None,
-
         with_diagram: bool | None = False,
         as_thumbnail: bool | None = False,
     ) -> hikari.Embed:
@@ -188,27 +178,30 @@ class FA(ABC):
             url=url,
             color=color,
             colour=colour,
-            timestamp=time_stamp
+            timestamp=time_stamp,
         )
 
         name = "State" if len(self.states) == 1 else "States"
         embed.add_field(name=name, value=self.states_str, inline=field_inline)
 
         name = "Alphabet" if len(self.alphabets) == 1 else "Alphabets"
-        embed.add_field(name=name, value=self.alphabets_str,
-                        inline=field_inline)
+        embed.add_field(name=name, value=self.alphabets_str, inline=field_inline)
 
-        embed.add_field(name="Initial State",
-                        value=self.start_state_str, inline=field_inline)
+        embed.add_field(
+            name="Initial State", value=self.start_state_str, inline=field_inline
+        )
 
         name = "Final State" if len(self.final_states) == 1 else "Final States"
-        embed.add_field(name=name, value=self.final_states_str,
-                        inline=field_inline)
+        embed.add_field(name=name, value=self.final_states_str, inline=field_inline)
 
-        name = "Transition Function" if len(
-            self.transition_functions) == 1 else "Transition Functions"
+        name = (
+            "Transition Function"
+            if len(self.transition_functions) == 1
+            else "Transition Functions"
+        )
         embed.add_field(
-            name=name, value=self.transition_functions_str, inline=field_inline)
+            name=name, value=self.transition_functions_str, inline=field_inline
+        )
 
         if with_diagram:
             if as_thumbnail:
@@ -220,8 +213,7 @@ class FA(ABC):
             embed.set_footer(text=footer_text, icon=footer_icon)
 
         if author_name:
-            embed.set_author(name=author_name,
-                             url=author_url, icon=author_icon)
+            embed.set_author(name=author_name, url=author_url, icon=author_icon)
 
         return embed
 
@@ -278,6 +270,7 @@ class FA(ABC):
         Returns:
             bool: True if the string is accepted, else False.
         """
+
         def dfs(current_state: str, remaining_str: str) -> tuple[bool, str]:
             if not remaining_str:
                 return current_state in self.finals, current_state
@@ -310,7 +303,7 @@ class FA(ABC):
         alphabets: set[str],
         start_state: str,
         final_states: set[str],
-        transition_functions: DFATransitions | NFATransitions,
+        transition_functions: dict[tuple[str, str], set[str]],
     ) -> bool:
         """
         Determine if a given FA is valid.
@@ -347,11 +340,12 @@ class NFA(FA):
         alphabets: set[str] = set(),
         start_state: str = "",
         final_states: set[str] = set(),
-        transition_functions: NFATransitions = {},
+        transition_functions: dict[tuple[str, str], set[str]] = {},
         ctx: lightbulb.Context | None = None,
     ) -> None:
-        super().__init__(states, alphabets, start_state,
-                         final_states, transition_functions, ctx)
+        super().__init__(
+            states, alphabets, start_state, final_states, transition_functions, ctx
+        )
 
     @property
     def is_dfa(self) -> bool:
@@ -391,11 +385,12 @@ class DFA(FA):
         alphabets: set[str] = set(),
         start_state: str = "",
         final_states: set[str] = set(),
-        transition_functions: DFATransitions = {},
+        transition_functions: dict[tuple[str, str], set[str]] = {},
         ctx: lightbulb.Context | None = None,
     ) -> None:
-        super().__init__(states, alphabets, start_state,
-                         final_states, transition_functions, ctx)
+        super().__init__(
+            states, alphabets, start_state, final_states, transition_functions, ctx
+        )
 
     @property
     def is_dfa(self) -> bool:
@@ -414,7 +409,7 @@ class DFA(FA):
         tf = ""
         for (from_state, symbol), to_state in self.transition_functions.items():
             symbol = "ε" if symbol == "" else symbol
-            tf += f"(`{from_state}`, `{symbol}`) -> `{to_state}`\n"
+            tf += f"(`{from_state}`, `{symbol}`) -> `{to_state.pop()}`\n"
         return tf
 
     def nfa_to_dfa(self) -> DFA:
@@ -434,3 +429,124 @@ class FAStringResult:
     @property
     def is_accepted(self) -> bool:
         return self.passed
+
+
+class FormModal(miru.Modal):
+    STATES_PATTERN = re.compile(r"\b\w+\b")
+    ALPHABETS_PATTERN = re.compile(r"\b\w+\b")
+    START_STATE_PATTERN = re.compile(r"\b\w+\b")
+    FINAL_STATES_PATTERN = re.compile(r"\b\w+\b")
+    TF_PATTERN = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
+
+    _states = miru.TextInput(
+        label="States",
+        placeholder="q0 q1 q2...",
+        required=True,
+    )
+    _alphabets = miru.TextInput(
+        label="Alphabets",
+        placeholder="a b c...",
+        required=True,
+    )
+    _start_state = miru.TextInput(
+        label="Start State",
+        placeholder="q0",
+        required=True,
+    )
+    _final_states = miru.TextInput(
+        label="Final State(s)",
+        placeholder="q2...",
+        required=True,
+    )
+    _transition_functions = miru.TextInput(
+        label="Transition Functions",
+        placeholder="state,symbol(None for ε)=state\nq0,a=q1\nq0,=q2\n...",
+        required=True,
+    )
+
+    def __init__(
+        self,
+        title: str | None = "Enter FA Data",
+        *,
+        custom_id: str | None = None,
+        timeout: float | int | timedelta | None = 300,
+    ) -> None:
+        self.states = ""
+        self.alphabets = ""
+        self.start_state = ""
+        self.final_states = ""
+        self.transition_functions = ""
+        super().__init__(title, custom_id=custom_id, timeout=timeout)
+
+    @property
+    def ctx(self) -> miru.ModalContext:
+        return self._ctx
+
+    @property
+    def is_dfa(self) -> bool:
+        if not self.fa:
+            raise error.InvalidFAError("No FA data provided.")
+        return self.fa.is_dfa
+
+    @property
+    def states_value(self) -> set[str]:
+        values = self.STATES_PATTERN.findall(self.states)
+        return set(values)
+
+    @property
+    def alphabets_value(self) -> set[str]:
+        values = self.INPUTS_PATTERN.findall(self.alphabets)
+        return set(values)
+
+    @property
+    def start_value(self) -> str:
+        match = self.INITIAL_PATTERN.search(self.start_state)
+        return match.group(0) if match else ""
+
+    @property
+    def finals_value(self) -> set[str]:
+        values = self.FINALS_PATTERN.findall(self.final_states)
+        return set(values)
+
+    @property
+    def transitions_value(self) -> dict[tuple[str, str], set[str]]:
+        transition_dict = {}
+
+        values = self.transition_functions.split("\n")
+        for value in values:
+            match = self.TF_PATTERN.match(value.strip())
+            if match:
+                k0, k1, _, v = match.groups()
+                if (k0, k1) in transition_dict:
+                    transition_dict[(k0, k1)].add(v)
+                else:
+                    transition_dict[(k0, k1)] = {v}
+
+        return transition_dict
+
+    async def modal_check(self, ctx: miru.ModalContext) -> bool:
+        self.states = ctx.values.get(self._states)
+        self.alphabets = ctx.values.get(self._alphabets)
+        self.start_state = ctx.values.get(self._start_state)
+        self.final_states = ctx.values.get(self._final_states)
+        self.transition_functions = ctx.values.get(self._transition_functions)
+
+        return FA.check_valid(
+            self.states_value,
+            self.alphabets_value,
+            self.start_value,
+            self.finals_value,
+            self.transitions_value,
+        )
+
+    async def callback(self, ctx: miru.ModalContext) -> None:
+        self.fa = FA(
+            self.states_value,
+            self.alphabets_value,
+            self.start_value,
+            self.finals_value,
+            self.transitions_value,
+            ctx,
+        )
+        self._ctx = ctx
+        self.stop()
