@@ -10,6 +10,7 @@ import hikari
 import lightbulb
 import miru
 import miru.modal
+import miru.text_input
 import miru.view
 
 from .extensions import error_handler as error
@@ -27,7 +28,7 @@ class FA(ABC):
         self,
         states: set[str] = set(),
         alphabets: set[str] = set(),
-        start_state: str = "",
+        initial_state: str = "",
         final_states: set[str] = set(),
         transition_functions: dict[tuple[str, str], set[str]] = {},
         ctx: lightbulb.Context | None = None,
@@ -38,7 +39,7 @@ class FA(ABC):
         Args:
             states (set[str]): The set of states in the FA.
             alphabets (set[str]): The set of input symbols in the FA.
-            start_state (str): The start state in the FA.
+            initial_state (str): The start state in the FA.
             final_states (set[str]): The set of accepted states in the FA.
             transition_functions (dict[tuple[str, str], set[str]]): The transition function in the FA.
             ctx (lightbulb.Context | None): The context of the command used. Defaults to None.
@@ -49,7 +50,7 @@ class FA(ABC):
         if not self.check_valid(
             states,
             alphabets,
-            start_state,
+            initial_state,
             final_states,
             transition_functions,
         ):
@@ -57,7 +58,7 @@ class FA(ABC):
 
         self.states = states
         self.alphabets = alphabets
-        self.start_state = start_state
+        self.initial_state = initial_state
         self.final_states = final_states
         self.transition_functions = transition_functions
         self.ctx = ctx
@@ -95,11 +96,11 @@ class FA(ABC):
         return f"{{`{'`, `'.join(alphabets)}`}}"
 
     @property
-    def start_state_str(self) -> str:
+    def initial_state_str(self) -> str:
         """
-        A string representation of the start state in the FA.
+        A string representation of the initial state in the FA.
         """
-        return f"`{self.start_state}`"
+        return f"`{self.initial_state}`"
 
     @property
     def final_states_str(self) -> str:
@@ -150,30 +151,30 @@ class FA(ABC):
 
     @abstractmethod
     def is_nfa(self) -> bool: ...
-    
+
     def get_values(self) -> tuple[str]:
         states = list(self.states)
         states.sort()
         states_str = " ".join(states)
-        
+
         alphabets = list(self.alphabets)
         alphabets.sort()
         alphabets_str = " ".join(alphabets)
-        
+
         final_states = list(self.final_states)
         final_states.sort()
         final_states_str = " ".join(final_states)
-        
+
         tf = ""
         for (s_state, symbol), n_states in self.transition_functions.items():
             for n_state in n_states:
                 tf += f"{s_state},{symbol}={n_state}\n"
         tf = tf.strip()
-        
+
         return (
             states_str,
             alphabets_str,
-            self.start_state,
+            self.initial_state,
             final_states_str,
             tf,
         )
@@ -216,7 +217,7 @@ class FA(ABC):
         embed.add_field(name=name, value=self.alphabets_str, inline=field_inline)
 
         embed.add_field(
-            name="Initial State", value=self.start_state_str, inline=field_inline
+            name="Initial State", value=self.initial_state_str, inline=field_inline
         )
 
         name = "Final State" if len(self.final_states) == 1 else "Final States"
@@ -329,7 +330,7 @@ class FA(ABC):
     def check_valid(
         states: set[str],
         alphabets: set[str],
-        start_state: str,
+        initial_state: str,
         final_states: set[str],
         transition_functions: dict[tuple[str, str], set[str]],
     ) -> bool:
@@ -340,8 +341,8 @@ class FA(ABC):
             bool: True if the FA is valid, else False.
         """
 
-        # Check the start and end states if they're in the set of all states"""
-        if start_state not in states:
+        # Check the initial and end states if they're in the set of all states"""
+        if initial_state not in states:
             return False
         if not final_states.issubset(states):
             return False
@@ -366,13 +367,13 @@ class NFA(FA):
         self,
         states: set[str] = set(),
         alphabets: set[str] = set(),
-        start_state: str = "",
+        initial_state: str = "",
         final_states: set[str] = set(),
         transition_functions: dict[tuple[str, str], set[str]] = {},
         ctx: lightbulb.Context | None = None,
     ) -> None:
         super().__init__(
-            states, alphabets, start_state, final_states, transition_functions, ctx
+            states, alphabets, initial_state, final_states, transition_functions, ctx
         )
 
     @property
@@ -411,13 +412,13 @@ class DFA(FA):
         self,
         states: set[str] = set(),
         alphabets: set[str] = set(),
-        start_state: str = "",
+        initial_state: str = "",
         final_states: set[str] = set(),
         transition_functions: dict[tuple[str, str], set[str]] = {},
         ctx: lightbulb.Context | None = None,
     ) -> None:
         super().__init__(
-            states, alphabets, start_state, final_states, transition_functions, ctx
+            states, alphabets, initial_state, final_states, transition_functions, ctx
         )
 
     @property
@@ -481,7 +482,7 @@ class ActionView(miru.View):
 class InputModal(miru.Modal):
     STATES_PATTERN = re.compile(r"\b\w+\b")
     ALPHABETS_PATTERN = re.compile(r"\w+")
-    START_STATE_PATTERN = re.compile(r"\b\w+\b")
+    INITIAL_STATE_PATTERN = re.compile(r"\b\w+\b")
     FINAL_STATES_PATTERN = re.compile(r"\b\w+\b")
     TF_PATTERN = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
 
@@ -495,8 +496,8 @@ class InputModal(miru.Modal):
         placeholder="a b c...",
         required=True,
     )
-    _start_state = miru.TextInput(
-        label="Start State",
+    _initial_state = miru.TextInput(
+        label="Initial State",
         placeholder="q0",
         required=True,
     )
@@ -520,7 +521,7 @@ class InputModal(miru.Modal):
     ) -> None:
         self.states = ""
         self.alphabets = ""
-        self.start_state = ""
+        self.initial_state = ""
         self.final_states = ""
         self.transition_functions = ""
         super().__init__(title, custom_id=custom_id, timeout=timeout)
@@ -546,8 +547,8 @@ class InputModal(miru.Modal):
         return set(values)
 
     @property
-    def start_value(self) -> str:
-        match = self.INITIAL_PATTERN.search(self.start_state)
+    def initial_value(self) -> str:
+        match = self.INITIAL_PATTERN.search(self.initial_state)
         return match.group(0) if match else ""
 
     @property
@@ -574,14 +575,14 @@ class InputModal(miru.Modal):
     async def modal_check(self, ctx: miru.ModalContext) -> bool:
         self.states = ctx.values.get(self._states)
         self.alphabets = ctx.values.get(self._alphabets)
-        self.start_state = ctx.values.get(self._start_state)
+        self.initial_state = ctx.values.get(self._initial_state)
         self.final_states = ctx.values.get(self._final_states)
         self.transition_functions = ctx.values.get(self._transition_functions)
 
         return FA.check_valid(
             self.states_value,
             self.alphabets_value,
-            self.start_value,
+            self.initial_value,
             self.finals_value,
             self.transitions_value,
         )
@@ -590,7 +591,7 @@ class InputModal(miru.Modal):
         self.fa = FA(
             self.states_value,
             self.alphabets_value,
-            self.start_value,
+            self.initial_value,
             self.finals_value,
             self.transitions_value,
             ctx,
@@ -602,7 +603,7 @@ class InputModal(miru.Modal):
 class EditModal(miru.Modal):
     STATES_PATTERN = re.compile(r"\b\w+\b")
     ALPHABETS_PATTERN = re.compile(r"\w")
-    START_STATE_PATTERN = re.compile(r"\b\w+\b")
+    INITIAL_STATE_PATTERN = re.compile(r"\b\w+\b")
     FINAL_STATES_PATTERN = re.compile(r"\b\w+\b")
     TF_PATTERN = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
 
@@ -629,8 +630,8 @@ class EditModal(miru.Modal):
             placeholder=values[1],
             required=True,
         )
-        self._start_state = miru.TextInput(
-            label="Start State",
+        self._initial_state = miru.TextInput(
+            label="Initial State",
             value=values[2],
             placeholder=values[2],
             required=True,
@@ -647,5 +648,11 @@ class EditModal(miru.Modal):
             placeholder=f"state,symbol(None for ε)=state\n{values[4]}",
             required=True,
         )
-        
-        self.add_item(self._states).add_item(self._alphabets).add_item(self._start_state).add_item(self._final_states).add_item(self._transition_functions)  # wtf
+
+        self = (
+            self.add_item(self._states)
+            .add_item(self._alphabets)
+            .add_item(self._initial_state)
+            .add_item(self._final_states)
+            .add_item(self._transition_functions)
+        )
