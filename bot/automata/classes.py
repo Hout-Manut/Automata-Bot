@@ -4,16 +4,16 @@ import re
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
+from functools import wraps
+from typing import Coroutine
 
 import graphviz
 import hikari
 import lightbulb
 import miru
-import miru.modal
-import miru.text_input
-import miru.view
 
 from .extensions import error_handler as error
+from . import buttons
 
 
 class FA(ABC):
@@ -116,6 +116,14 @@ class FA(ABC):
     def transition_functions_str(self) -> str:
         """
         A string representation of the transition functions in the FA.
+        """
+        ...
+
+    @abstractmethod
+    @property
+    def is_minimized(self) -> bool:
+        """
+        Returns True if the FA has been minimized once already.
         """
         ...
 
@@ -468,12 +476,49 @@ class ActionView(miru.View):
         inter: lightbulb.SlashContext,
         fa: FA,
         *,
+        testable: bool | None = None,
+        convertable: bool | None = None,
+        minimizable: bool | None = None,
+        savable: bool | None = None,
+        editable: bool = True,
         timeout: float | int | timedelta | None = 300,
         autodefer: bool | miru.AutodeferOptions = True,
     ) -> None:
+
         self._inter = inter
         self._fa = fa
+
+        self.test_button = buttons.TestStringButton(testable)
+        self.convert_button = buttons.ConvertButton(convertable)
+        self.minimize_button = buttons.MinimizeButton(minimizable)
+        self.save_button = buttons.SaveButton(savable)
+        self.edit_button = buttons.EditButton(editable)
+        self.exit_button = buttons.ExitButton()
+
+        self = (
+            self.add_item(self.test_button)
+            .add_item(self.convert_button)
+            .add_item(self.minimize_button)
+            .add_item(self.save_button)
+            .add_item(self.edit_button)
+            .add_item(self.exit_button)
+        )
+
         super().__init__(timeout=timeout, autodefer=autodefer)
+
+    @property
+    def fa(self) -> FA:
+        """
+        The FA this view belongs to.
+        """
+        return self._fa
+
+    @property
+    def inter(self) -> lightbulb.SlashContext:
+        """
+        The command interaction this view belongs to.
+        """
+        return self._inter
 
     async def edit_fa(self, ctx: miru.ViewContext, btn: miru.Button) -> None:
         pass
@@ -605,7 +650,7 @@ class EditModal(miru.Modal):
     ALPHABETS_PATTERN = re.compile(r"\w")
     INITIAL_STATE_PATTERN = re.compile(r"\b\w+\b")
     FINAL_STATES_PATTERN = re.compile(r"\b\w+\b")
-    TF_PATTERN = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
+    TF_PATTERN = re.compile(r"\b(\w+)\s*[,+\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
 
     def __init__(
         self,
@@ -656,3 +701,47 @@ class EditModal(miru.Modal):
             .add_item(self._final_states)
             .add_item(self._transition_functions)
         )
+
+        self.states = ""
+        self.alphabets = ""
+        self.initial_state = ""
+        self.final_states = ""
+        self.transition_functions = ""
+
+        super().__init__(title, custom_id=custom_id, timeout=timeout)
+
+    @property
+    def states_value(self) -> set[str]:
+        values = self.STATES_PATTERN.findall(self.states)
+        return set(values)
+
+    @property
+    def alphabets_value(self) -> set[str]:
+        values = self.INPUTS_PATTERN.findall(self.alphabets)
+        return set(values)
+
+    @property
+    def initial_value(self) -> str:
+        match = self.INITIAL_PATTERN.search(self.initial_state)
+        return match.group(0) if match else ""
+
+    @property
+    def finals_value(self) -> set[str]:
+        values = self.FINALS_PATTERN.findall(self.final_states)
+        return set(values)
+
+    @property
+    def transitions_value(self) -> dict[tuple[str, str], set[str]]:
+        transition_dict = {}
+
+        values = self.transition_functions.split("\n")
+        for value in values:
+            match = self.TF_PATTERN.match(value.strip())
+            if match:
+                k0, k1, _, v = match.groups()
+                if (k0, k1) in transition_dict:
+                    transition_dict[(k0, k1)].add(v)
+                else:
+                    transition_dict[(k0, k1)] = {v}
+
+        return transition_dict
