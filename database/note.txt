@@ -2,6 +2,8 @@ Changes:
 - Made the connection with the database and table.
 - Tested out the CRUD operation.
 
-**Note: 
+**To-do: 
 - pip install mysql-connector-python
+- run the query in 'database.sql'
+- run the 'connection.py' to (insert/delete/display/update)
 
