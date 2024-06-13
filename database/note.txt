@@ -1,1 +1,7 @@
-put stuffs here idk
+Changes:
+- Made the connection with the database and table.
+- Tested out the CRUD operation.
+
+**Note: 
+- pip install mysql-connector-python
+
