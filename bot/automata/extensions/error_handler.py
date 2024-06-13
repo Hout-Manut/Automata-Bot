@@ -21,6 +21,16 @@ class InvalidFAError(UserError):
     Raised when the provided FA data is invalid.
     """
 
+class InvalidNFAError(InvalidFAError):
+    """
+    Raised when the provided NFA data is invalid.
+    """
+
+class InvalidDFAError(InvalidFAError):
+    """
+    Raised when the provided NFA data is invalid.
+    """
+
 
 @error.listener(lightbulb.CommandErrorEvent)
 async def error_handler(event: lightbulb.CommandErrorEvent) -> None:
