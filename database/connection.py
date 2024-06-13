@@ -6,7 +6,7 @@ def connect_to_database():
         db_con = mysql.connector.connect(
             host='localhost',
             user='root',
-            password='limhao',
+            password='ur password',
             database='Automata'
         )
         if db_con.is_connected():
