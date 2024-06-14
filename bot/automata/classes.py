@@ -16,6 +16,25 @@ from .extensions import error_handler as error
 from . import buttons
 
 
+class Color:
+    RED = 0xff6459
+    GREEN = 0xa2e57b
+    LIGHT_BLUE = 0x55c7f1
+
+
+class ActionOptions:
+    DESIGN = 0
+    TEST_FA = 1
+    TEST_STRING = 2
+    CONVERT_TO_DFA = 3
+    MINIMIZE_DFA = 4
+
+
+class RegexPatterns:
+    BACKSPACE = re.compile(r"-(\d+)\s*$")
+
+
+
 class FA(ABC):
     """
     Abstract base class representing a Finite Automaton (FA).
@@ -80,7 +99,7 @@ class FA(ABC):
     @property
     def states_str(self) -> str:
         """
-        A string representation of the set of states in the FA.
+        A string representation of the set of states of the FA.
         """
         states = list(self.states)
         states.sort()
@@ -89,7 +108,7 @@ class FA(ABC):
     @property
     def alphabets_str(self) -> str:
         """
-        A string representation of the set of alphabets in the FA.
+        A string representation of the set of alphabets of the FA.
         """
         alphabets = list(self.alphabets)
         alphabets.sort()
@@ -98,14 +117,14 @@ class FA(ABC):
     @property
     def initial_state_str(self) -> str:
         """
-        A string representation of the initial state in the FA.
+        A string representation of the initial state of the FA.
         """
         return f"`{self.initial_state}`"
 
     @property
     def final_states_str(self) -> str:
         """
-        A string representation of the set of final states in the FA.
+        A string representation of the set of final states of the FA.
         """
         final_states = list(self.final_states)
         final_states.sort()
@@ -115,9 +134,23 @@ class FA(ABC):
     @property
     def transition_functions_str(self) -> str:
         """
-        A string representation of the transition functions in the FA.
+        A string representation of the transition functions of the FA.
         """
         ...
+
+    @property
+    def t_func(self) -> dict[tuple[str, str], set[str]]:
+        """
+        An alias for `transition_functions`.
+        """
+        return self.transition_functions
+
+    @property
+    def t_func_str(self) -> str:
+        """
+        An alias for `transition_function_str`.
+        """
+        return self.transition_functions_str
 
     @abstractmethod
     @property
@@ -222,14 +255,16 @@ class FA(ABC):
         embed.add_field(name=name, value=self.states_str, inline=field_inline)
 
         name = "Alphabet" if len(self.alphabets) == 1 else "Alphabets"
-        embed.add_field(name=name, value=self.alphabets_str, inline=field_inline)
+        embed.add_field(name=name, value=self.alphabets_str,
+                        inline=field_inline)
 
         embed.add_field(
             name="Initial State", value=self.initial_state_str, inline=field_inline
         )
 
         name = "Final State" if len(self.final_states) == 1 else "Final States"
-        embed.add_field(name=name, value=self.final_states_str, inline=field_inline)
+        embed.add_field(name=name, value=self.final_states_str,
+                        inline=field_inline)
 
         name = (
             "Transition Function"
@@ -250,21 +285,22 @@ class FA(ABC):
             embed.set_footer(text=footer_text, icon=footer_icon)
 
         if author_name:
-            embed.set_author(name=author_name, url=author_url, icon=author_icon)
+            embed.set_author(name=author_name,
+                             url=author_url, icon=author_icon)
 
         return embed
 
-    def get_diagram(self) -> hikari.File:
+    def get_diagram(self, ratio: str = "1") -> hikari.File:
         """
         Get the diagram for the FA.
 
         Returns:
             hikari.File: The diagram for the FA.
         """
-        path = self.draw_diagram()
+        path = self.draw_diagram(ratio=ratio)
         return hikari.File(path, filename="automata.png")
 
-    def draw_diagram(self) -> str:
+    def draw_diagram(self, ratio: str = "1") -> str:
         """
         Draw the FA as a diagram.
 
@@ -276,7 +312,7 @@ class FA(ABC):
             format="png",
             graph_attr={
                 "size": "10,10",
-                "ratio": "1",
+                "ratio": ratio,
                 "dpi": "200",
                 "center": "true",
                 "beautify": "true",
@@ -457,11 +493,25 @@ class DFA(FA):
 
 
 class FAStringResult:
-    def __init__(self, fa: FA, string: str, passed: bool, last_state: str) -> None:
-        self.string = string
+    def __init__(
+        self,
+        fa: FA,
+        string: str | None = None,
+        passed: bool = False,
+        last_state: str | None = None,
+    ) -> None:
+        self._string = string
         self.fa = fa
         self.passed = passed
         self.last_state = last_state
+
+    @property
+    def string(self) -> str:
+        return "" if not self._string else self._string
+
+    @string.setter
+    def string(self, string: str) -> None:
+        self._string = string
 
     @property
     def is_accepted(self) -> bool:
