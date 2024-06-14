@@ -54,6 +54,9 @@ class FA:
             return self.ctx.author.username
         return "Unknown"
 
+    def save_to_db(self) -> None:
+        states = self.states
+
     def get_embed(
         self,
         *,

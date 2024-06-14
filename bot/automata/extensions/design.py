@@ -48,6 +48,8 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
     image = hikari.File(path, filename="automata.png")
     embed.set_image(image)
 
+    modal.fa.save_to_db()
+
     await modal.ctx.respond(embed=embed)
 
 

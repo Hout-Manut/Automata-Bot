@@ -62,13 +62,24 @@ def delete_data(db_con, user_id):
 db_con = connect_to_database()
 if db_con:
     # Insert data
-    # insert_data(db_con, 3, 'Finite Automaton', 'q0', 'a,b', 'q0', 'q1', 'q0,a->q1', '2024-06-13')
-    
+    # {'q0', 'q1', 'q2'}, {'a', 'b'}, 'q0', {q1}, 'q0,a=q1', '2024-06-13'
+
+    insert_data(
+        db_con,
+        3,
+        'Finite Automaton',
+        'q0 q1 q2',  # " ".join(modal.fa.states)
+        'a b',
+        'q0',
+        'q1',
+        'q0,a->q1',
+        '2024-06-13')
+
     # Select data
     select_data(db_con)
-    
+
     # Update data
     # update_data(db_con, 3, 'Updated Automaton', 'a,b,c')
-    
+
     # # Delete data
     # delete_data(db_con, 3)

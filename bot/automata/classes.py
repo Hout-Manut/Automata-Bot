@@ -16,13 +16,13 @@ from .extensions import error_handler as error
 from . import buttons
 
 
-class Color:
+class Color(int):
     RED = 0xff6459
     GREEN = 0xa2e57b
     LIGHT_BLUE = 0x55c7f1
 
 
-class ActionOptions:
+class ActionOptions(int):
     DESIGN = 0
     TEST_FA = 1
     TEST_STRING = 2
