@@ -91,6 +91,18 @@ class FA:
         self.transition_functions = transition_functions
         self.ctx = ctx
 
+    def save_to_db(self, ctx: lightbulb.SlashContext) -> None:
+        values = self.get_values()
+        user_id = ctx.user.id
+        states = values["states"]
+        alphabets = values["alphabets"]
+        initia_state = values["initial_state"]
+        final_states = values["final_states"]
+        tf = values["tf"]
+
+
+        pass
+
     @property
     def is_nfa(self) -> bool:
         return not self.is_dfa

@@ -22,20 +22,15 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
     await modal.ctx.interaction.create_initial_response(
         hikari.ResponseType.DEFERRED_MESSAGE_CREATE,
     )
-    print("hi")
     fa = modal.fa
-    # ctx = modal.ctx
 
     design_menu = menu.Menu(timeout=600)
     builder = await design_menu.build_response_async(
         ctx.app.d.miru,
         automata.MainScreen(design_menu, fa=fa, inter=ctx)
     )
-    print("hi")
     await builder.create_followup(ctx.interaction)
-    print("hi")
     await modal.ctx.interaction.delete_initial_response()
-    print("hi")
     ctx.app.d.miru.start_view(design_menu)
 
 
