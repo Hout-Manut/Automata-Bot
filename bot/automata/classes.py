@@ -3,15 +3,12 @@ from __future__ import annotations
 import re
 import time
 from datetime import datetime, timedelta
-from functools import wraps
-from typing import Coroutine
 
 import graphviz
 import hikari
 import lightbulb
 import miru
 
-from . import DEFAULT_PATH
 from .extensions import error_handler as error
 # from . import buttons
 
@@ -92,14 +89,27 @@ class FA:
         self.ctx = ctx
 
     def save_to_db(self, ctx: lightbulb.SlashContext) -> None:
+        template = "NFA with {num_states} states, {num_alphabets} inputs. Starts at {initial_state}."
+
         values = self.get_values()
+
         user_id = ctx.user.id
         states = values["states"]
         alphabets = values["alphabets"]
-        initia_state = values["initial_state"]
+        initial_state = values["initial_state"]
         final_states = values["final_states"]
         tf = values["tf"]
 
+        num_states = len(self.states)
+        num_alphabets = len(self.alphabets)
+
+        name = template.format(
+            num_states=num_states,
+            num_alphabets=num_alphabets,
+            initial_state=initial_state
+        )
+
+        date = ...
 
         pass
 

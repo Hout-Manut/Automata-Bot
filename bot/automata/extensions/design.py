@@ -24,6 +24,8 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
     )
     fa = modal.fa
 
+    modal.fa.save_to_db(ctx)
+
     design_menu = menu.Menu(timeout=600)
     builder = await design_menu.build_response_async(
         ctx.app.d.miru,
