@@ -2,7 +2,7 @@ CREATE DATABASE Automata;
 
 use Automata;
 
-CREATE TABLE History (
+CREATE TABLE Recent (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT,
     fa_name VARCHAR(255),
