@@ -1,26 +1,26 @@
 import hikari
 import lightbulb
 import miru
+from miru.ext import menu
 
-class TestStringButton(miru.Button):
+from . import screen, classes
+
+
+class TestStringButton(menu.ScreenButton):
 
     def __init__(
         self,
-        testable: bool | None = None,
+        fa: classes.FA,
         label: str = "Test a String",
         *,
         emoji: hikari.Emoji | str | None = None,
-        style: hikari.InteractiveButtonTypesT = hikari.ButtonStyle.SECONDARY,
-        disabled: bool | None = None,
+        style: hikari.ButtonStyle = hikari.ButtonStyle.SECONDARY,
+        disabled: bool = False,
         custom_id: str | None = None,
-        row: int = 0,
+        row: int | None = None,
         position: int | None = None,
-        autodefer: (
-            bool | miru.AutodeferOptions | hikari.UndefinedType
-        ) = hikari.UNDEFINED,
+        autodefer: bool | miru.AutodeferOptions | hikari.UndefinedType = hikari.UNDEFINED
     ) -> None:
-        disabled = False if testable is None else not testable
-
         super().__init__(
             label,
             emoji=emoji,
@@ -29,36 +29,28 @@ class TestStringButton(miru.Button):
             custom_id=custom_id,
             row=row,
             position=position,
-            autodefer=autodefer,
-        )
+            autodefer=autodefer)
 
     def callback(self, context: miru.ViewContext) -> None:
         raise NotImplementedError
 
 
-class ConvertButton(miru.Button):
+class ConvertButton(menu.ScreenButton):
 
     def __init__(
         self,
-        convertable: bool | None = None,
+        fa: classes.FA,
         label: str = "Convert to DFA",
         *,
         emoji: hikari.Emoji | str | None = None,
-        style: hikari.InteractiveButtonTypesT = hikari.ButtonStyle.SECONDARY,
-        disabled: bool | None = None,
+        style: hikari.ButtonStyle = hikari.ButtonStyle.SECONDARY,
+        disabled: bool = False,
         custom_id: str | None = None,
-        row: int = 0,
+        row: int | None = None,
         position: int | None = None,
-        autodefer: (
-            bool | miru.AutodeferOptions | hikari.UndefinedType
-        ) = hikari.UNDEFINED,
+        autodefer: bool | miru.AutodeferOptions | hikari.UndefinedType = hikari.UNDEFINED
     ) -> None:
-        disabled = (
-            (True if self.view.fa.is_dfa else False)
-            if convertable is None
-            else not convertable
-        )
-
+        self.fa = fa
         super().__init__(
             label,
             emoji=emoji,
@@ -67,10 +59,9 @@ class ConvertButton(miru.Button):
             custom_id=custom_id,
             row=row,
             position=position,
-            autodefer=autodefer,
-        )
+            autodefer=autodefer)
 
-    def callback(self, context: miru.ViewContext) -> None:
+    async def callback(self, context: miru.ViewContext) -> None:
         raise NotImplementedError
 
 
