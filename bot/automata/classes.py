@@ -44,6 +44,35 @@ class FA:
     Class representing a Finite Automaton (FA).
     """
 
+class Color(int):
+    RED = 0xff6459
+    GREEN = 0xa2e57b
+    LIGHT_BLUE = 0x55c7f1
+
+
+class ActionOptions(int):
+    DESIGN = 0
+    TEST_FA = 1
+    TEST_STRING = 2
+    CONVERT_TO_DFA = 3
+    MINIMIZE_DFA = 4
+
+
+class RegexPatterns:
+    BACKSPACE = re.compile(r"-(\d+)\s*$")
+
+    STATES = re.compile(r"\b\w+\b")
+    ALPHABETS = re.compile(r"\w+")
+    INITIAL_STATE = re.compile(r"\b\w+\b")
+    FINAL_STATES = re.compile(r"\b\w+\b")
+    TF = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
+
+
+class FA:
+    """
+    Class representing a Finite Automaton (FA).
+    """
+
     def __init__(
         self,
         states: set[str] = set(),
@@ -75,6 +104,13 @@ class FA:
             transition_functions,
         ):
             raise error.InvalidFAError("Invalid FA data provided.")
+
+        if self.check_dfa(
+            states, alphabets, initial_state, final_states, transition_functions
+        ):
+            self.is_dfa = True
+        else:
+            self.is_dfa = False
 
         if self.check_dfa(
             states, alphabets, initial_state, final_states, transition_functions
@@ -166,6 +202,7 @@ class FA:
     def states_str(self) -> str:
         """
         A string representation of the set of states of the FA.
+        A string representation of the set of states of the FA.
         """
         states = list(self.states)
         states.sort()
@@ -174,6 +211,7 @@ class FA:
     @property
     def alphabets_str(self) -> str:
         """
+        A string representation of the set of alphabets of the FA.
         A string representation of the set of alphabets of the FA.
         """
         alphabets = list(self.alphabets)
@@ -184,12 +222,14 @@ class FA:
     def initial_state_str(self) -> str:
         """
         A string representation of the initial state of the FA.
+        A string representation of the initial state of the FA.
         """
         return f"`{self.initial_state}`"
 
     @property
     def final_states_str(self) -> str:
         """
+        A string representation of the set of final stsates of the FA.
         A string representation of the set of final stsates of the FA.
         """
         final_states = list(self.final_states)
@@ -200,7 +240,33 @@ class FA:
     def transition_functions_str(self) -> str:
         """
         A string representation of the transition functions of the FA.
+        A string representation of the transition functions of the FA.
         """
+        tf = ""
+        if self.is_dfa:
+            for (from_state, symbol), to_state in self.transition_functions.items():
+                symbol = "ε" if symbol == "" else symbol
+                tf += f"(`{from_state}`, `{symbol}`) -> `{to_state.pop()}`\n"
+        else:
+            for (from_state, symbol), to_states in self.transition_functions.items():
+                symbol = "ε" if symbol == "" else symbol
+                tf += f"(`{from_state}`, `{symbol}`) -> {{`{'`, `'.join(to_states)}`}}\n"
+        return tf
+
+    @property
+    def t_func(self) -> dict[tuple[str, str], set[str]]:
+        """
+        An alias for `transition_functions`.
+        """
+        return self.transition_functions
+
+    @property
+    def t_func_str(self) -> str:
+        """
+        An alias for `transition_functions_str`.
+        """
+        return self.transition_functions_str
+
         tf = ""
         if self.is_dfa:
             for (from_state, symbol), to_state in self.transition_functions.items():
@@ -235,7 +301,12 @@ class FA:
             raise error.InvalidFAError("The FA is not a DFA.")
 
         raise NotImplementedError
+        if self.is_nfa:
+            raise error.InvalidFAError("The FA is not a DFA.")
 
+        raise NotImplementedError
+
+    def nfa_to_dfa(self) -> FA:
     def nfa_to_dfa(self) -> FA:
         """
         Convert the NFA to a DFA.
@@ -250,7 +321,12 @@ class FA:
             raise error.InvalidFAError("The FA is already a DFA.")
 
         raise NotImplementedError
+        if self.is_dfa:
+            raise error.InvalidFAError("The FA is already a DFA.")
 
+        raise NotImplementedError
+
+    def minimize(self) -> FA:
     def minimize(self) -> FA:
         """
         Minimize the DFA.
@@ -264,7 +340,10 @@ class FA:
         """
         if self.is_nfa:
             raise error.InvalidFAError("The FA is not a DFA.")
+        if self.is_nfa:
+            raise error.InvalidFAError("The FA is not a DFA.")
 
+        raise NotImplementedError
         raise NotImplementedError
 
     def get_values(self) -> tuple[str]:
@@ -331,12 +410,16 @@ class FA:
         name = "Alphabet" if len(self.alphabets) == 1 else "Alphabets"
         embed.add_field(name=name, value=self.alphabets_str,
                         inline=field_inline)
+        embed.add_field(name=name, value=self.alphabets_str,
+                        inline=field_inline)
 
         embed.add_field(
             name="Initial State", value=self.initial_state_str, inline=field_inline
         )
 
         name = "Final State" if len(self.final_states) == 1 else "Final States"
+        embed.add_field(name=name, value=self.final_states_str,
+                        inline=field_inline)
         embed.add_field(name=name, value=self.final_states_str,
                         inline=field_inline)
 
@@ -361,9 +444,12 @@ class FA:
         if author_name:
             embed.set_author(name=author_name,
                              url=author_url, icon=author_icon)
+            embed.set_author(name=author_name,
+                             url=author_url, icon=author_icon)
 
         return embed
 
+    def get_diagram(self, ratio: str = "1") -> hikari.File:
     def get_diagram(self, ratio: str = "1") -> hikari.File:
         """
         Get the diagram for the FA.
@@ -372,8 +458,10 @@ class FA:
             hikari.File: The diagram for the FA.
         """
         path = self.draw_diagram(ratio=ratio)
+        path = self.draw_diagram(ratio=ratio)
         return hikari.File(path, filename="automata.png")
 
+    def draw_diagram(self, ratio: str = "1") -> str:
     def draw_diagram(self, ratio: str = "1") -> str:
         """
         Draw the FA as a diagram.
@@ -387,6 +475,7 @@ class FA:
             graph_attr={
                 "size": "10,10",
                 "ratio": ratio,
+                "ratio": ratio,
                 "dpi": "200",
                 "center": "true",
                 "beautify": "true",
@@ -394,10 +483,13 @@ class FA:
         )
         for state in self.states:
             if state in self.final_states:
+            if state in self.final_states:
                 graph.node(state, shape="doublecircle")
             else:
                 graph.node(state, shape="circle")
         graph.node("", shape="point")
+        graph.edge("", self.initial_state)
+        for (state, symbol), next_states in self.transition_functions.items():
         graph.edge("", self.initial_state)
         for (state, symbol), next_states in self.transition_functions.items():
             symbol = "ε" if symbol == "" else symbol
@@ -504,8 +596,42 @@ class FA:
                 if len(next_states) != 1:
                     return False  # Transition of a state and symbol leads to 0 or more than 1 states: NFA
 
+    @staticmethod
+    def check_dfa(
+        states: set[str],
+        inputs: set[str],
+        initial: str,
+        finals: set[str],
+        transitions: dict[tuple[str, str], set[str]],
+    ) -> bool:
+        """
+        Determine if a given FA is an NFA or a DFA.
+
+        Args:
+            states (set): The set of states.
+            inputs (set): The set of imput symbols.
+            initial (str): The start state.
+            finals (set): The set of accept states.
+            transitions (dict): The transition functions as a dictionary where the keys are (state, symbol) and values are set of next states
+
+        Returns:
+            bool: True if the FA is DFA, False if it is an NFA.
+        """
+        for state in states:
+            for symbol in inputs:
+                if (state, symbol) not in transitions:
+                    return False  # Missing transitions: NFA
+                next_states = transitions[(state, symbol)]
+                if len(next_states) != 1:
+                    return False  # Transition of a state and symbol leads to 0 or more than 1 states: NFA
+
         return True
 
+    def __str__(self) -> str:
+        return f"FA({self.states}, {self.alphabets}, {self.initial_state}, {self.final_states}, {self.transition_functions})"
+
+
+class FAStringResult:
     def __str__(self) -> str:
         return f"FA({self.states}, {self.alphabets}, {self.initial_state}, {self.final_states}, {self.transition_functions})"
 
@@ -517,11 +643,24 @@ class FAStringResult:
         string: str | None = None,
         passed: bool = False,
         last_state: str | None = None,
+        fa: FA | None = None,
+        string: str | None = None,
+        passed: bool = False,
+        last_state: str | None = None,
     ) -> None:
+        self._string = string
         self._string = string
         self.fa = fa
         self.passed = passed
         self.last_state = last_state
+
+    @property
+    def string(self) -> str:
+        return "" if self._string is None else self._string
+
+    @string.setter
+    def string(self, string: str) -> None:
+        self._string = string
 
     @property
     def string(self) -> str:
@@ -537,11 +676,13 @@ class FAStringResult:
 
 
 class InputFAModal(miru.Modal):
+class InputFAModal(miru.Modal):
 
     _states = miru.TextInput(
         label="States",
         placeholder="q0 q1 q2...",
         required=True,
+        value="q0 q1",
         value="q0 q1",
     )
     _alphabets = miru.TextInput(
@@ -549,11 +690,13 @@ class InputFAModal(miru.Modal):
         placeholder="a b c...",
         required=True,
         value="a b",
+        value="a b",
     )
     _initial_state = miru.TextInput(
         label="Initial State",
         placeholder="q0",
         required=True,
+        value="q0",
         value="q0",
     )
     _final_states = miru.TextInput(
@@ -561,11 +704,14 @@ class InputFAModal(miru.Modal):
         placeholder="q2...",
         required=True,
         value="q1",
+        value="q1",
     )
     _transition_functions = miru.TextInput(
         label="Transition Functions",
         placeholder="state,symbol(None for ε)=state\nq0,a=q1\nq0,=q2\n...",
         required=True,
+        value="q0,a=q1\nq1,b=q0",
+        style=hikari.TextInputStyle.PARAGRAPH,
         value="q0,a=q1\nq1,b=q0",
         style=hikari.TextInputStyle.PARAGRAPH,
     )
@@ -597,20 +743,24 @@ class InputFAModal(miru.Modal):
     @property
     def states_value(self) -> set[str]:
         values = RegexPatterns.STATES.findall(self.states)
+        values = RegexPatterns.STATES.findall(self.states)
         return set(values)
 
     @property
     def alphabets_value(self) -> set[str]:
+        values = RegexPatterns.ALPHABETS.findall(self.alphabets)
         values = RegexPatterns.ALPHABETS.findall(self.alphabets)
         return set(values)
 
     @property
     def initial_value(self) -> str:
         match = RegexPatterns.INITIAL_STATE.search(self.initial_state)
+        match = RegexPatterns.INITIAL_STATE.search(self.initial_state)
         return match.group(0) if match else ""
 
     @property
     def finals_value(self) -> set[str]:
+        values = RegexPatterns.FINAL_STATES.findall(self.final_states)
         values = RegexPatterns.FINAL_STATES.findall(self.final_states)
         return set(values)
 
@@ -620,6 +770,7 @@ class InputFAModal(miru.Modal):
 
         values = self.transition_functions.split("\n")
         for value in values:
+            match = RegexPatterns.TF.match(value.strip())
             match = RegexPatterns.TF.match(value.strip())
             if match:
                 k0, k1, _, v = match.groups()
@@ -691,6 +842,39 @@ class EditFAModal(miru.Modal):
         value="q0,a=q1\nq1,b=q0",
         style=hikari.TextInputStyle.PARAGRAPH,
     )
+class EditFAModal(miru.Modal):
+
+    _states = miru.TextInput(
+        label="States",
+        placeholder="q0 q1 q2...",
+        required=True,
+        value="q0 q1",
+    )
+    _alphabets = miru.TextInput(
+        label="Alphabets",
+        placeholder="a b c...",
+        required=True,
+        value="a b",
+    )
+    _initial_state = miru.TextInput(
+        label="Initial State",
+        placeholder="q0",
+        required=True,
+        value="q0",
+    )
+    _final_states = miru.TextInput(
+        label="Final State(s)",
+        placeholder="q2...",
+        required=True,
+        value="q1",
+    )
+    _transition_functions = miru.TextInput(
+        label="Transition Functions",
+        placeholder="state,symbol(None for ε)=state\nq0,a=q1\nq0,=q2\n...",
+        required=True,
+        value="q0,a=q1\nq1,b=q0",
+        style=hikari.TextInputStyle.PARAGRAPH,
+    )
 
     def __init__(
         self,
@@ -702,6 +886,11 @@ class EditFAModal(miru.Modal):
     ) -> None:
         self._fa = fa
         values = fa.get_values()
+        self._states.value = values["states"]
+        self._alphabets.value = values["alphabets"]
+        self._initial_state.value = values["initial_state"]
+        self._final_states.value = values["final_states"]
+        self._transition_functions.value = values["tf"]
         self._states.value = values["states"]
         self._alphabets.value = values["alphabets"]
         self._initial_state.value = values["initial_state"]
@@ -721,22 +910,30 @@ class EditFAModal(miru.Modal):
         return self._ctx
 
     @property
+    def ctx(self) -> miru.ModalContext:
+        return self._ctx
+
+    @property
     def states_value(self) -> set[str]:
+        values = RegexPatterns.STATES.findall(self.states)
         values = RegexPatterns.STATES.findall(self.states)
         return set(values)
 
     @property
     def alphabets_value(self) -> set[str]:
         values = RegexPatterns.ALPHABETS.findall(self.alphabets)
+        values = RegexPatterns.ALPHABETS.findall(self.alphabets)
         return set(values)
 
     @property
     def initial_value(self) -> str:
         match = RegexPatterns.INITIAL_STATE.search(self.initial_state)
+        match = RegexPatterns.INITIAL_STATE.search(self.initial_state)
         return match.group(0) if match else ""
 
     @property
     def finals_value(self) -> set[str]:
+        values = RegexPatterns.FINAL_STATES.findall(self.final_states)
         values = RegexPatterns.FINAL_STATES.findall(self.final_states)
         return set(values)
 
@@ -747,6 +944,7 @@ class EditFAModal(miru.Modal):
         values = self.transition_functions.split("\n")
         for value in values:
             match = RegexPatterns.TF.match(value.strip())
+            match = RegexPatterns.TF.match(value.strip())
             if match:
                 k0, k1, _, v = match.groups()
                 if (k0, k1) in transition_dict:
@@ -755,6 +953,71 @@ class EditFAModal(miru.Modal):
                     transition_dict[(k0, k1)] = {v}
 
         return transition_dict
+
+    async def modal_check(self, ctx: miru.ModalContext) -> bool:
+        self.states = ctx.values.get(self._states)
+        self.alphabets = ctx.values.get(self._alphabets)
+        self.initial_state = ctx.values.get(self._initial_state)
+        self.final_states = ctx.values.get(self._final_states)
+        self.transition_functions = ctx.values.get(self._transition_functions)
+
+        return FA.check_valid(
+            self.states_value,
+            self.alphabets_value,
+            self.initial_value,
+            self.finals_value,
+            self.transitions_value,
+        )
+
+    async def callback(self, context: miru.ModalContext) -> None:
+        self.fa = FA(
+            self.states_value,
+            self.alphabets_value,
+            self.initial_value,
+            self.finals_value,
+            self.transitions_value,
+            context,
+        )
+        self._ctx = context
+        self.stop()
+
+
+class InputStringModal(miru.Modal):
+    def __init__(
+        self,
+        fa: FA,
+        string: str = "",
+        title: str | None = "Input a String to Test",
+        *,
+        custom_id: str | None = None,
+        timeout: float | int | timedelta | None = 300,
+    ) -> None:
+        self.fa = fa
+        self._string = miru.TextInput(
+            label="String",
+            placeholder="Input String",
+            required=True,
+            value=string,
+        )
+        self.add_item(self._string)
+
+        self.string = string
+
+        super().__init__(title, custom_id=custom_id, timeout=timeout)
+
+    @property
+    def string_value(self) -> str:
+        return self._string.value
+
+    async def modal_check(self, ctx: miru.ModalContext) -> bool:
+        content = ctx.values.get(self._string)
+
+        return set(content).issubset(self.fa.alphabets)
+
+    async def callback(self, ctx: miru.ModalContext) -> None:
+        self.result = self.fa.check_string(self.string_value)
+        self.ctx = ctx
+        self.stop()
 
     async def modal_check(self, ctx: miru.ModalContext) -> bool:
         self.states = ctx.values.get(self._states)
