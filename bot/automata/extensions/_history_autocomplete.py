@@ -7,32 +7,6 @@ import hikari
 class Order(int):
     DATE_ASC = 0
     DATE_DESC = 1
-
-def connect_to_database():
-    try:
-        db_con = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='limhao',
-            database='Automata'
-        )
-        if db_con.is_connected():
-            print('Database connection established')
-            return db_con
-    except Error as e:
-        print(f'Error connecting to database: {e}')
-        return None
-    
-def insert_data(db_con, user_id, fa_name, state, alphabet, initial_state, final_state, transition, updated_at):
-    try:
-        cursor = db_con.cursor()
-        sql_query = 'INSERT INTO History (user_id, fa_name, state, alphabet, initial_state, final_state, transition, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
-        insert_data = (user_id, fa_name, state, alphabet, initial_state, final_state, transition, updated_at)
-        cursor.execute(sql_query, insert_data)
-        db_con.commit()
-        print('Data inserted successfully')
-    except Error as e:
-        print(f'Error inserting data: {e}')
         
 async def history_autocomplete(
     opt: hikari.AutocompleteInteractionOption,
@@ -45,6 +19,29 @@ async def history_autocomplete(
     history: list[str] = []
     
     # TODO : Get history from db using user_id, sorted.
+    try:
+        db_con = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='limhao',
+            database='Automata'
+        )
+        
+        if db_con.is_connected():
+            try:
+                cursor = db_con.cursor()
 
+                sql_query = 'SELECT fa_name FROM Recent WHERE user_id=%s;'
+                cursor.execute(sql_query, (user_id,))
+                result = cursor.fetchall()
+                print(result)
+                for row in result:
+                #     print(row)
+                    history.append(row[0])
+            except Error as e:
+                print(f'Retrieving Data Unsucessfully: {e}')
+
+    except Error as e:
+        print(f'Error: {e}')
 
     return history[:25]

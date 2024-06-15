@@ -1,0 +1,11 @@
++ Overall-Changes:
+- Save the user's input to the database
+- Made a '/recent' cmd and display the selection options retrieved from the database
+
++ Minor Changes:
+- None
+
++ Error:
+- The bot doesn't respond back as expected
+- My teammate broke it(Manut)
+
