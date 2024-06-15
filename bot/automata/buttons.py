@@ -3,7 +3,7 @@ import lightbulb
 import miru
 from miru.ext import menu
 
-from . import screen, classes
+from . import classes
 
 
 class TestStringButton(menu.ScreenButton):
