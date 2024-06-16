@@ -141,13 +141,15 @@ class FA:
         num_states = len(self.states)
         num_alphabets = len(self.alphabets)
 
+        date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         fa_name = template.format(  
             num_states=num_states,
             num_alphabets=num_alphabets,
-            initial_state=initial_state
+            initial_state=initial_state,
         )
 
-        date = ...
+
         try:
             db_con = mysql.connector.connect(
                 host='localhost',
@@ -163,7 +165,8 @@ class FA:
 
                     sql_query = 'INSERT INTO Recent (user_id, fa_name, states, alphabets, initial_state, final_states, transitions, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
                     # sql_query = 'SELECT * FROM History;'
-                    data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, '2000-10-01')
+
+                    data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, date)
                     cursor.execute(sql_query, data)
 
                     db_con.commit()
@@ -307,7 +310,6 @@ class FA:
         raise NotImplementedError
 
     def nfa_to_dfa(self) -> FA:
-    def nfa_to_dfa(self) -> FA:
         """
         Convert the NFA to a DFA.
 
@@ -326,7 +328,6 @@ class FA:
 
         raise NotImplementedError
 
-    def minimize(self) -> FA:
     def minimize(self) -> FA:
         """
         Minimize the DFA.
@@ -450,7 +451,6 @@ class FA:
         return embed
 
     def get_diagram(self, ratio: str = "1") -> hikari.File:
-    def get_diagram(self, ratio: str = "1") -> hikari.File:
         """
         Get the diagram for the FA.
 
@@ -461,7 +461,6 @@ class FA:
         path = self.draw_diagram(ratio=ratio)
         return hikari.File(path, filename="automata.png")
 
-    def draw_diagram(self, ratio: str = "1") -> str:
     def draw_diagram(self, ratio: str = "1") -> str:
         """
         Draw the FA as a diagram.
@@ -483,13 +482,10 @@ class FA:
         )
         for state in self.states:
             if state in self.final_states:
-            if state in self.final_states:
                 graph.node(state, shape="doublecircle")
             else:
                 graph.node(state, shape="circle")
         graph.node("", shape="point")
-        graph.edge("", self.initial_state)
-        for (state, symbol), next_states in self.transition_functions.items():
         graph.edge("", self.initial_state)
         for (state, symbol), next_states in self.transition_functions.items():
             symbol = "ε" if symbol == "" else symbol
@@ -643,10 +639,6 @@ class FAStringResult:
         string: str | None = None,
         passed: bool = False,
         last_state: str | None = None,
-        fa: FA | None = None,
-        string: str | None = None,
-        passed: bool = False,
-        last_state: str | None = None,
     ) -> None:
         self._string = string
         self._string = string
@@ -674,46 +666,38 @@ class FAStringResult:
     def is_accepted(self) -> bool:
         return self.passed
 
-
-class InputFAModal(miru.Modal):
 class InputFAModal(miru.Modal):
 
     _states = miru.TextInput(
         label="States",
         placeholder="q0 q1 q2...",
         required=True,
-        value="q0 q1",
-        value="q0 q1",
+        value="q0 q1"
     )
     _alphabets = miru.TextInput(
         label="Alphabets",
         placeholder="a b c...",
         required=True,
-        value="a b",
-        value="a b",
+        value="a b"
     )
     _initial_state = miru.TextInput(
         label="Initial State",
         placeholder="q0",
         required=True,
-        value="q0",
-        value="q0",
+        value="q0"
     )
     _final_states = miru.TextInput(
         label="Final State(s)",
         placeholder="q2...",
         required=True,
-        value="q1",
-        value="q1",
+        value="q1"
     )
     _transition_functions = miru.TextInput(
         label="Transition Functions",
         placeholder="state,symbol(None for ε)=state\nq0,a=q1\nq0,=q2\n...",
         required=True,
         value="q0,a=q1\nq1,b=q0",
-        style=hikari.TextInputStyle.PARAGRAPH,
-        value="q0,a=q1\nq1,b=q0",
-        style=hikari.TextInputStyle.PARAGRAPH,
+        style=hikari.TextInputStyle.PARAGRAPH
     )
 
     def __init__(
