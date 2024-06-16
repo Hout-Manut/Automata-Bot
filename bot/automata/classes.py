@@ -103,13 +103,15 @@ class FA:
         num_states = len(self.states)
         num_alphabets = len(self.alphabets)
 
+        date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         fa_name = template.format(
             num_states=num_states,
             num_alphabets=num_alphabets,
-            initial_state=initial_state
+            initial_state=initial_state,
         )
 
-        date = ...
+
         try:
             db_con = mysql.connector.connect(
                 host='localhost',
@@ -125,7 +127,8 @@ class FA:
 
                     sql_query = 'INSERT INTO Recent (user_id, fa_name, states, alphabets, initial_state, final_states, transitions, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
                     # sql_query = 'SELECT * FROM History;'
-                    data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, '2000-10-01')
+
+                    data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, date)
                     cursor.execute(sql_query, data)
 
                     db_con.commit()
@@ -551,6 +554,7 @@ class InputFAModal(miru.Modal):
         placeholder="q0",
         required=True,
         value="q0",
+        value="q0"
     )
     _final_states = miru.TextInput(
         label="Final State(s)",

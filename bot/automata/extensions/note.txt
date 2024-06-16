@@ -1,3 +1,4 @@
+ Date: 2024-06-15
 + Overall-Changes:
 - Save the user's input to the database
 - Made a '/recent' cmd and display the selection options retrieved from the database
@@ -9,3 +10,18 @@
 - The bot doesn't respond back as expected
 - My teammate broke it(Manut)
 
+
+Date: 2024-06-16
++Overall-Changes:
+- Save the user's input including the current datetime into the database
+- Display "x days/hours/minutes/seconds ago" along with the fa_name in the selection menu. (done)
+
++ Minor Changes:
+- Made a helper function called "time_since()" to calculate for the current time different. 
+
++ Error: 
+- The bot doesn't respond (Havent fixed)
+- The options format doesn't look quite right yet. 
+    - Expected Format Example: 
+        "NFA that accept...                                2 minutes ago"
+        "NFA that accept...                                3 minutes ago"

@@ -13,6 +13,6 @@ CREATE TABLE Recent (
     initial_state VARCHAR(255),
     final_states VARCHAR(255),
     transitions VARCHAR(255),
-    updated_at DATE
+    updated_at DATETIME
 );
 
