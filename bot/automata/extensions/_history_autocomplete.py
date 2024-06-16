@@ -4,23 +4,26 @@ from mysql.connector import Error
 import hikari
 from datetime import datetime
 
+
 class Order(int):
     DATE_ASC = 0
     DATE_DESC = 1
+
+
 def time_since(dt):
     """
     Calculates the time difference between a given datetime (dt) and the current time.
     Returns a human-readable string indicating how long ago the datetime occurred.
-    
+
     Parameters:
     - dt: A datetime object representing the timestamp to compare with the current time (e.g., "2024-06-16 15:11:55").
-    
+
     Returns:
     - A string indicating the time difference in a human-readable format (e.g., "X days ago").
     """
     now = datetime.now()
     diff = now - dt
-    
+
     seconds = diff.total_seconds()
     print(f'diff: {diff}\nsec: {seconds}')
     if seconds < 60:
@@ -34,7 +37,8 @@ def time_since(dt):
     else:
         days = seconds // 86400
         return f"{int(days)} days ago"
-    
+
+
 async def history_autocomplete(
     opt: hikari.AutocompleteInteractionOption,
     inter: hikari.AutocompleteInteraction,
@@ -42,9 +46,9 @@ async def history_autocomplete(
 ) -> list[str]:
     query: str = opt.value      # The current input in the message field.
     user_id = inter.user.id     # The user ID
-    
+
     history: list[str] = []
-    
+
     # TODO : Get history from db using user_id, sorted.
     try:
         db_con = mysql.connector.connect(
@@ -53,7 +57,7 @@ async def history_autocomplete(
             password='limhao',
             database='Automata'
         )
-        
+
         if db_con.is_connected():
             try:
                 cursor = db_con.cursor()
