@@ -10,7 +10,7 @@
 ### Requirements
 
 - Python 3.11+
-- mySQL
+- MySQL
 - [Graphviz](https://graphviz.org/) (Put into PATH)
 - A discord app token
 
@@ -38,7 +38,7 @@ python -O main.py
 ```
 
 
-## Command Breakdowns
+## Commands Breakdown
 ### design:
     - User input FA data and the program will message back a diagram image.
     - Args:
@@ -58,45 +58,49 @@ python -O main.py
         - Save the data with the user ID to database
         - Give the user options to use the output image further upon showing to them (generate a diagram)
 ### test string:
-    - User input char/string and the program checks if it is accepted by an FA. FA will be asked after the command’s invocation. Then the strings will be taken from any messages the user sends afterward (i.e no /)
+    - User input char/string and the program checks if it is accepted by an FA. FA will be asked after the command’s invocation. The user may edit the string afterward as many times as they like.
     - Args:
-        - History (Optional) : Let the user select from their saved FA. If not, show a form to input a new FA
+        - recent (Optional) : Let the user select from their past FAs. If not, show a form to input a new FA
     - Returns:
-        - Boolean message and the string that updates in realtime. Will delete the users input after confirming its to be used to test the string. (If user say “!stop”, stops the function)
+        - Boolean message and the string that updates in realtime.
     - Additional functions:
         - Idk yet
 ### Convert NFA to DFA:
-    - Gets an NFA and converts to DFA, throw an error if passed a DFA.
+    - Gets an NFA and converts to DFA, raise an error if passed a DFA.
     - Args:
-        - History (Optional) : Let the user select from their saved NFA. If not, show a form to input a new NFA
+        - recent (Optional) : Let the user select from their saved NFA. If not, show a form to input a new NFA
     - Returns:
         - DFA data and diagram
     - Additional functions:
-        - Save the data (optionally the image) with the user ID to database
+        - Save the data with the user ID to database
         - Give the user options to use the output image further upon showing to them (minimize)
 ### minimize:
-    - Gets a DFA and shorten it, throw an error if passed a NFA or it can not be shorten further.
+    - Gets a DFA and shorten it, raise an error if passed a NFA or it can not be shortened further.
     - Args:
-        - History (Optional) : Let the user select from their saved DFA. If not, show a form to input a new DFA
+        - recent (Optional) : Let the user select from their saved DFA. If not, show a form to input a new DFA
     - Returns:
         - Minimized DFA data and diagram
     - Additional functions:
-        - Save the data (optionally the image) with the user ID to database
+        - Save the data with the user ID to database
 ### history:
     - Gets the user past FA, let them delete and maybe set a name.
     - Args:
         - History : The user’s FA history
     - Returns:
-        - The FA data and Diagram, additional data such as FA types, FA is minimize-able, date and the option to delete.
+        - The FA data and Diagram, additional data such as FA types, FA is minimize-able, date and the option to delete and edit.
 
 ## Data Structure:
  The FA data consist of 5 values:
+
+
  ⁃ states (set[str]) : Finite set of states (Q{q})
  ⁃ alphabets: (set[str]) : Finite set of input symbols (s)
  ⁃ Initial_state (str) : The start state (q0)
  ⁃ final_states (set[str]) : Finite set of accepted states
  ⁃ transition_functions (dict[tuple, str]) : Tuple holds (q, s) = q’
 
+
  We can add additional data such as is it a NDA or DFA, can be minimized or not etc. (bool?)
+
 
  We can use Discord user id as an identification that links the user to their FA history (long int). And the time they input the FA to be sorted by date.
