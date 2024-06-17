@@ -9,47 +9,55 @@ import os
 # Load environment variables from .env file
 load_dotenv()
 
+
 class Order(int):
     DATE_ASC = 0
     DATE_DESC = 1
+
+
 def time_since(dt):
     """
     Calculates the time difference between a given datetime (dt) and the current time.
     Returns a human-readable string indicating how long ago the datetime occurred.
-    
+
     Parameters:
     - dt: A datetime object representing the timestamp to compare with the current time (e.g., "2024-06-16 15:11:55").
-    
+
     Returns:
     - A string indicating the time difference in a human-readable format (e.g., "X days ago").
     """
     now = datetime.now()
     diff = now - dt
-    
+
     seconds = diff.total_seconds()
     print(f'diff: {diff}\nsec: {seconds}')
     if seconds < 60:
-        return f"{int(seconds)} seconds ago"
+        s = "" if seconds == 1 else "s"
+        return f"{int(seconds)} second{s} ago"
     elif seconds < 3600:
         minutes = seconds // 60
-        return f"{int(minutes)} minutes ago"
+        s = "" if minutes == 1 else "s"
+        return f"{int(minutes)} minute{s} ago"
     elif seconds < 86400:
         hours = seconds // 3600
-        return f"{int(hours)} hours ago"
+        s = "" if hours == 1 else "s"
+        return f"{int(hours)} hour{s} ago"
     else:
         days = seconds // 86400
-        return f"{int(days)} days ago"
-    
+        s = "" if days == 1 else "s"
+        return f"{int(days)} day{s} ago"
+
+
 async def history_autocomplete(
     opt: hikari.AutocompleteInteractionOption,
     inter: hikari.AutocompleteInteraction,
-    sort_by: Optional[int] = Order.DATE_DESC,
+    sort_by: int | None = Order.DATE_DESC,
 ) -> list[str]:
     query: str = opt.value      # The current input in the message field.
     user_id = inter.user.id     # The user ID
-    
+
     history: list[str] = []
-    
+
     # TODO : Get history from db using user_id, sorted.
     try:
         db_con = mysql.connector.connect(
@@ -59,7 +67,7 @@ async def history_autocomplete(
             database=os.getenv('DB_NAME'),
             # port=1201
         )
-        
+
         if db_con.is_connected():
             try:
                 cursor = db_con.cursor()

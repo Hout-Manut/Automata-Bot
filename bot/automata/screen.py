@@ -38,7 +38,7 @@ class MainScreen(menu.Screen):
 
     async def build_content(self) -> menu.ScreenContent:
         return menu.ScreenContent(
-            self.get_fa_embed()
+            embed=self.get_fa_embed()
         )
 
     def get_fa_embed(
@@ -88,12 +88,14 @@ class MainScreen(menu.Screen):
         modal = EditFAModal(self.fa)
         await ctx.respond_with_modal(modal)
         await modal.wait()
-        await modal.ctx.interaction.create_initial_response(
-            hikari.ResponseType.DEFERRED_MESSAGE_CREATE
-        )
         self.fa = modal.fa
-        await self.menu.update_message(self.get_fa_embed())
-        await modal.ctx.interaction.delete_initial_response()
+        await self.menu.update_message(await self.build_content())
+
+        # await modal.ctx.interaction.create_initial_response(
+        #     hikari.ResponseType.DEFERRED_MESSAGE_CREATE
+        # )
+        # self.fa = modal.fa
+        # await modal.ctx.interaction.delete_initial_response()
 
 
 class TestStringScreen(menu.Screen):
