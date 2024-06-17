@@ -90,25 +90,26 @@ class FA:
         self.ctx = ctx
 
     def save_to_db(self, ctx: lightbulb.SlashContext) -> None:
-        print('hi')
-        template = "NFA with {num_states} states {num_alphabets} inputs. Starts at {initial_state}."
-        print('hiii')
+
+        template = "{fa} with {num_states} states, {num_alphabets} inputs. Starts at {initial_state}."
+
         values = self.get_values()
-        print('hiiiii')
+
         user_id = ctx.user.id
         states = values["states"]
         alphabets = values["alphabets"]
         initial_state = values["initial_state"]
         final_states = values["final_states"]
         tf = values["tf"]
-        print('222')
+
+        fa_type = "An NFA" if self.is_nfa else "A DFA"
         num_states = len(self.states)
         num_alphabets = len(self.alphabets)
 
         date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print('gi')
 
         fa_name = template.format(
+            fa=fa_type,
             num_states=num_states,
             num_alphabets=num_alphabets,
             initial_state=initial_state,
@@ -122,7 +123,6 @@ class FA:
                 database=os.getenv('DB_NAME'),
                 # port=int(os.getenv('DB_PORT'))
             )
-            print(db_con)
 
             if db_con.is_connected():
                 try:
@@ -132,7 +132,6 @@ class FA:
                     # sql_query = 'SELECT * FROM History;'
 
                     data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, date)
-                    print(f'Data: {data}')
                     cursor.execute(sql_query, data)
 
                     db_con.commit()
@@ -270,7 +269,7 @@ class FA:
 
         raise NotImplementedError
 
-    def get_values(self) -> tuple[str]:
+    def get_values(self) -> dict[str, str]:
         states = list(self.states)
         states.sort()
         states_str = " ".join(states)
@@ -286,7 +285,7 @@ class FA:
         buffer = []
         for (s_state, symbol), n_states in self.transition_functions.items():
             for n_state in n_states:
-                tf.append(f"{s_state},{symbol}={n_state}")
+                buffer.append(f"{s_state},{symbol}={n_state}")
 
         tf = "|".join(buffer)
 

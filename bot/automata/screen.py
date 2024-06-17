@@ -88,14 +88,12 @@ class MainScreen(menu.Screen):
         modal = EditFAModal(self.fa)
         await ctx.respond_with_modal(modal)
         await modal.wait()
+        await modal.ctx.interaction.create_initial_response(
+            hikari.ResponseType.DEFERRED_MESSAGE_CREATE
+        )
         self.fa = modal.fa
         await self.menu.update_message(await self.build_content())
-
-        # await modal.ctx.interaction.create_initial_response(
-        #     hikari.ResponseType.DEFERRED_MESSAGE_CREATE
-        # )
-        # self.fa = modal.fa
-        # await modal.ctx.interaction.delete_initial_response()
+        await modal.ctx.interaction.delete_initial_response()
 
 
 class TestStringScreen(menu.Screen):
