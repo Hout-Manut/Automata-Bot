@@ -3,6 +3,11 @@ import mysql.connector
 from mysql.connector import Error
 import hikari
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 class Order(int):
     DATE_ASC = 0
@@ -48,10 +53,11 @@ async def history_autocomplete(
     # TODO : Get history from db using user_id, sorted.
     try:
         db_con = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='limhao',
-            database='Automata'
+            host=os.getenv('DB_HOST'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_NAME'),
+            # port=1201
         )
         
         if db_con.is_connected():

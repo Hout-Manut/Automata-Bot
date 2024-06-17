@@ -5,7 +5,8 @@ import time
 from datetime import datetime, timedelta
 import mysql.connector
 from mysql.connector import Error
-
+import os
+from dotenv import load_dotenv
 import graphviz
 import hikari
 import lightbulb
@@ -14,6 +15,8 @@ import miru
 from .extensions import error_handler as error
 # from . import buttons
 
+# Load environment variables from .env file
+load_dotenv()
 
 class Color(int):
     RED = 0xff6459
@@ -149,18 +152,17 @@ class FA:
             initial_state=initial_state,
         )
 
-
         try:
             db_con = mysql.connector.connect(
-                host='localhost',
-                user='root',
-                password='limhao',
-                database='Automata'
+                host=os.getenv('DB_HOST'),
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASSWORD'),
+                database=os.getenv('DB_NAME'),
+                # port=int(os.getenv('DB_PORT'))
             )
             
             if db_con.is_connected():
                 try:
-
                     cursor = db_con.cursor()
 
                     sql_query = 'INSERT INTO Recent (user_id, fa_name, states, alphabets, initial_state, final_states, transitions, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
