@@ -9,12 +9,31 @@
 
 ### Requirements
 
-- Python 3.11
+- Python 3.11+
 - mySQL
 - [Graphviz](https://graphviz.org/) (Put into PATH)
 
-### How to setup
+### How to setup (Windows)
+- (Optional) Create a virtual enviroment
+```bash
+python venv .venv
+```
+- Enter the enviroment if you have created one
+```bash
+.venv/Scripts/activate
+```
 - Install the libraries in requirements.txt
+```bash
+pip install -r requirements.txt
+```
+- Run setup
+```bash
+python setup.py
+```
+- Run the main file
+```bash
+python -O main.py
+```
 
 
 ## Command Breakdowns
