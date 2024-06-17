@@ -12,8 +12,10 @@
 - Python 3.11+
 - mySQL
 - [Graphviz](https://graphviz.org/) (Put into PATH)
+- A discord app token
 
 ### How to setup (Windows)
+- Using `.env.example`. Create a `.env` file and fill it with the corresponding informations
 - (Optional) Create a virtual enviroment
 ```bash
 python venv .venv
