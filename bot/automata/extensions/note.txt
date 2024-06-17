@@ -28,5 +28,8 @@ Date: 2024-06-16
 
 Date: 2024-06-17 - Manut
 
++ Changes:
+- Made a filter for recent.py to remove " ~ {time ago}"
+
 + Minor Changes:
 - Added plural check for the helper function "time_since()"

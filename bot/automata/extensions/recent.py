@@ -11,6 +11,9 @@ recent_plugin = lightbulb.Plugin('recent')
 @lightbulb.command('recent', 'Show recent inputs')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def recent_cmd(ctx: lightbulb.SlashContext) -> None:
+    fa_name = ctx.options.history.split(" ~ ")[0]
+    print("Found: ", fa_name)
+
     await ctx.respond('Fuck u panavath')
 
 

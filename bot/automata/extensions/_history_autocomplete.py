@@ -30,7 +30,6 @@ def time_since(dt):
     diff = now - dt
 
     seconds = diff.total_seconds()
-    print(f'diff: {diff}\nsec: {seconds}')
     if seconds < 60:
         s = "" if seconds == 1 else "s"
         return f"{int(seconds)} second{s} ago"
@@ -76,13 +75,13 @@ async def history_autocomplete(
                 cursor.execute(sql_query, (user_id,))
                 result = cursor.fetchall()
                 # Debugging: print the result
-                print("Query Result:", result)
+                # print("Query Result:", result)
 
                 for row in result:
-                    print("Row:", row)  # Debugging: print each row
+                    # print("Row:", row)  # Debugging: print each row
                     fa_name = row[0]
                     updated_at = row[1]
-                    print(f'{fa_name}\n{updated_at}')
+                    # print(f'{fa_name}\n{updated_at}')
 
                     time_ago = time_since(updated_at)
 
