@@ -4,6 +4,19 @@
 - Each command will have different input parameters depends on the function.
 - Some commands may save the user input and/or result in a database and link it to their Discord ID so they can be retrieved back later as histories.
 
+
+## How to run
+
+### Requirements
+
+- Python 3.11
+- mySQL
+- [Graphviz](https://graphviz.org/) (Put into PATH)
+
+### How to setup
+- Install the libraries in requirements.txt
+
+
 ## Command Breakdowns
 ### design:
     - User input FA data and the program will message back a diagram image.
@@ -58,10 +71,10 @@
 ## Data Structure:
  The FA data consist of 5 values:
  ⁃ states (set[str]) : Finite set of states (Q{q})
- ⁃ alphabet: (set[str]) : Finite set of input symbols (s)
- ⁃ transition_function (dict[tuple, str]) : Tuple holds (q, s) = q’
+ ⁃ alphabets: (set[str]) : Finite set of input symbols (s)
  ⁃ Initial_state (str) : The start state (q0)
- ⁃ final_state (set[str]) : Finite set of accepted states
+ ⁃ final_states (set[str]) : Finite set of accepted states
+ ⁃ transition_functions (dict[tuple, str]) : Tuple holds (q, s) = q’
 
  We can add additional data such as is it a NDA or DFA, can be minimized or not etc. (bool?)
 

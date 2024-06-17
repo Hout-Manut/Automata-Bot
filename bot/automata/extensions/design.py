@@ -46,12 +46,12 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
     modal.fa.save_to_db(ctx)
 
     # Create a design menu
+    print("Creating design builder")
     design_menu = menu.Menu(timeout=600)
     builder = await design_menu.build_response_async(
         ctx.app.d.miru,
         automata.MainScreen(design_menu, fa=fa, inter=ctx)
     )
-    print("Created design menu builder")
 
     # Create a followup response for the initial interaction
     await builder.create_followup(ctx.interaction)
