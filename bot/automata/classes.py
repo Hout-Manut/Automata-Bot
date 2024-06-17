@@ -90,21 +90,23 @@ class FA:
         self.ctx = ctx
 
     def save_to_db(self, ctx: lightbulb.SlashContext) -> None:
+        print('hi')
         template = "NFA with {num_states} states {num_alphabets} inputs. Starts at {initial_state}."
-
+        print('hiii')
         values = self.get_values()
-
+        print('hiiiii')
         user_id = ctx.user.id
         states = values["states"]
         alphabets = values["alphabets"]
         initial_state = values["initial_state"]
         final_states = values["final_states"]
         tf = values["tf"]
-
+        print('222')
         num_states = len(self.states)
         num_alphabets = len(self.alphabets)
 
         date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print('gi')
 
         fa_name = template.format(
             num_states=num_states,
@@ -120,6 +122,7 @@ class FA:
                 database=os.getenv('DB_NAME'),
                 # port=int(os.getenv('DB_PORT'))
             )
+            print(db_con)
 
             if db_con.is_connected():
                 try:
@@ -129,6 +132,7 @@ class FA:
                     # sql_query = 'SELECT * FROM History;'
 
                     data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, date)
+                    print(f'Data: {data}')
                     cursor.execute(sql_query, data)
 
                     db_con.commit()

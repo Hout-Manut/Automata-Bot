@@ -27,7 +27,7 @@ if __name__ == "__main__":
         cursor = db_con.cursor()
         cursor.execute("SHOW DATABASES")
 
-        if "Automata" in [x[0] for x in cursor]:
+        if "automata" in [x[0] for x in cursor]:
             print("Automata database already exists. Do you want to overwrite it? (y/n)")
             opt = input()
             if "y" in opt:
