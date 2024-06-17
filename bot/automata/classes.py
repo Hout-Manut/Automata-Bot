@@ -279,11 +279,12 @@ class FA:
         final_states.sort()
         final_states_str = " ".join(final_states)
 
-        tf = ""
+        buffer = []
         for (s_state, symbol), n_states in self.transition_functions.items():
             for n_state in n_states:
-                tf += f"{s_state},{symbol}={n_state}|"
-        tf = tf.strip()
+                tf.append(f"{s_state},{symbol}={n_state}")
+
+        tf = "|".join(buffer)
 
         return {
             "states": states_str,
@@ -554,7 +555,6 @@ class InputFAModal(miru.Modal):
         placeholder="q0",
         required=True,
         value="q0",
-        value="q0"
     )
     _final_states = miru.TextInput(
         label="Final State(s)",
@@ -706,7 +706,8 @@ class EditFAModal(miru.Modal):
         self._alphabets.value = values["alphabets"]
         self._initial_state.value = values["initial_state"]
         self._final_states.value = values["final_states"]
-        self._transition_functions.value = values["tf"]
+        tf = values["tf"].split("|")
+        self._transition_functions.value = "\n".join(tf)
 
         self.states = ""
         self.alphabets = ""

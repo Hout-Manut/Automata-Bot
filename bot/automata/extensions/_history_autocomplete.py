@@ -27,22 +27,26 @@ def time_since(dt):
     seconds = diff.total_seconds()
     print(f'diff: {diff}\nsec: {seconds}')
     if seconds < 60:
-        return f"{int(seconds)} seconds ago"
+        s = "" if seconds == 1 else "s"
+        return f"{int(seconds)} second{s} ago"
     elif seconds < 3600:
         minutes = seconds // 60
-        return f"{int(minutes)} minutes ago"
+        s = "" if minutes == 1 else "s"
+        return f"{int(minutes)} minute{s} ago"
     elif seconds < 86400:
         hours = seconds // 3600
-        return f"{int(hours)} hours ago"
+        s = "" if hours == 1 else "s"
+        return f"{int(hours)} hour{s} ago"
     else:
         days = seconds // 86400
-        return f"{int(days)} days ago"
+        s = "" if days == 1 else "s"
+        return f"{int(days)} day{s} ago"
 
 
 async def history_autocomplete(
     opt: hikari.AutocompleteInteractionOption,
     inter: hikari.AutocompleteInteraction,
-    sort_by: Optional[int] = Order.DATE_DESC,
+    sort_by: int | None = Order.DATE_DESC,
 ) -> list[str]:
     query: str = opt.value      # The current input in the message field.
     user_id = inter.user.id     # The user ID
