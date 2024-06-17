@@ -32,7 +32,7 @@ class RegexPatterns:
     BACKSPACE = re.compile(r"-(\d+)\s*$")
 
     STATES = re.compile(r"\b\w+\b")
-    ALPHABETS = re.compile(r"\w?")
+    ALPHABETS = re.compile(r"\w+")
     INITIAL_STATE = re.compile(r"\b\w+\b")
     FINAL_STATES = re.compile(r"\b\w+\b")
     TF = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
@@ -171,7 +171,7 @@ class FA:
         """
         states = list(self.states)
         states.sort()
-        return f"{{`{', '.join(states)}`}}"
+        return f"{{`{'`, `'.join(states)}`}}"
 
     @property
     def alphabets_str(self) -> str:
