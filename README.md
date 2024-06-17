@@ -90,14 +90,12 @@ python -O main.py
         - The FA data and Diagram, additional data such as FA types, FA is minimize-able, date and the option to delete and edit.
 
 ## Data Structure:
- The FA data consist of 5 values:
-
-
- ⁃ states (set[str]) : Finite set of states (Q{q})
- ⁃ alphabets: (set[str]) : Finite set of input symbols (s)
- ⁃ Initial_state (str) : The start state (q0)
- ⁃ final_states (set[str]) : Finite set of accepted states
- ⁃ transition_functions (dict[tuple, str]) : Tuple holds (q, s) = q’
+The FA data consist of 5 values:
+- states (set[str]) : Finite set of states (Q{q})
+- alphabets: (set[str]) : Finite set of input symbols (s)
+- Initial_state (str) : The start state (q0)
+- final_states (set[str]) : Finite set of accepted states
+- transition_functions (dict[tuple, str]) : Tuple holds (q, s) = q’
 
 
  We can add additional data such as is it a NDA or DFA, can be minimized or not etc. (bool?)
