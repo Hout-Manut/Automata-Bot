@@ -71,7 +71,7 @@ async def history_autocomplete(
             try:
                 cursor = db_con.cursor()
 
-                sql_query = 'SELECT fa_name, updated_at FROM Recent WHERE user_id=%s;'
+                sql_query = 'SELECT fa_name, updated_at FROM Recent WHERE user_id=%s ORDER BY updated_at DESC;'
                 cursor.execute(sql_query, (user_id,))
                 result = cursor.fetchall()
                 # Debugging: print the result
