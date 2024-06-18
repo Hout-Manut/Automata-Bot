@@ -386,27 +386,37 @@ class FA:
             str: The path to the diagram.
         """
         file_name = self.author_name
+        margin = "0" if  ratio == "1" else "5"
         graph = graphviz.Digraph(
             format="png",
             graph_attr={
+                "bgcolor": "#383a40",
+                # "color": "transparent",
+                "fillcolor": "#383a40",
                 "size": "10,10",
                 "ratio": ratio,
                 "dpi": "200",
                 "center": "true",
                 "beautify": "true",
+                "smoothing": "avg_dist",
+                "orientation": "90",
             },
         )
-        for state in self.states:
-            if state in self.final_states:
-                graph.node(state, shape="doublecircle")
-            else:
-                graph.node(state, shape="circle")
-        graph.node("", shape="point")
-        graph.edge("", self.initial_state)
-        for (state, symbol), next_states in self.transition_functions.items():
-            symbol = "ε" if symbol == "" else symbol
-            for next_state in next_states:
-                graph.edge(state, next_state, symbol)
+        with graph.subgraph(name="cluster_0") as c:
+            c.attr = {"shape": "square", "bgcolor": "#3a4348", "border": "0"}
+            c.node_attr = {"color": "#ffffff", "fillcolor": "transparent", "fontcolor": "#ffffff"}
+            c.edge_attr = {"color": "#ffffff", "fontcolor": "#ffffff", "len": "1"}
+            for state in self.states:
+                if state in self.final_states:
+                    c.node(state, shape="doublecircle")
+                else:
+                    c.node(state, shape="circle")
+            c.node("", shape="point")
+            c.edge("", self.initial_state)
+            for (state, symbol), next_states in self.transition_functions.items():
+                symbol = "ε" if symbol == "" else symbol
+                for next_state in next_states:
+                    c.edge(state, next_state, symbol)
 
         graph.render(f"storage/graph_cache/{file_name}")
         return f"storage/graph_cache/{file_name}.png"
@@ -422,31 +432,31 @@ class FA:
             bool: True if the string is accepted, else False.
         """
 
-        def dfs(current_state: str, remaining_str: str) -> tuple[bool, str]:
+        def dfs(current_state: str, remaining_str: str) -> bool:
             if not remaining_str:
-                return current_state in self.finals, current_state
+                return current_state in self.final_states
 
-            if (current_state, "") in self.transitions:
+            if (current_state, "") in self.t_func:
                 next_states = self.transitions[(current_state, "")]
                 for next_state in next_states:
-                    accepted, last_state = dfs(next_state, remaining_str)
+                    accepted = dfs(next_state, remaining_str)
                     if accepted:
-                        return True, last_state
+                        return True
 
             symbol = remaining_str[0]
             remaining_str = remaining_str[1:]
 
-            if (current_state, symbol) in self.transitions:
-                next_states = self.transitions[(current_state, symbol)]
+            if (current_state, symbol) in self.t_func:
+                next_states = self.t_func[(current_state, symbol)]
                 for next_state in next_states:
-                    accepted, last_state = dfs(next_state, remaining_str)
+                    accepted = dfs(next_state, remaining_str)
                     if accepted:
-                        return True, last_state
+                        return True
 
-            return False, current_state if not remaining_str else last_state
+            return False
 
-        passed, last_state = dfs(self.initial, string)
-        return FAStringResult(self, string, passed, last_state)
+        passed = dfs(self.initial_state, string)
+        return FAStringResult(self, string, passed)
 
     @staticmethod
     def check_valid(
@@ -514,19 +524,18 @@ class FA:
         return f"FA({self.states}, {self.alphabets}, {self.initial_state}, {self.final_states}, {self.transition_functions})"
 
 
-
 class FAStringResult:
     def __init__(
         self,
         fa: FA | None = None,
         string: str | None = None,
         passed: bool = False,
-        last_state: str | None = None,
+        # last_state: str | None = None,
     ) -> None:
         self._string = string
         self.fa = fa
         self.passed = passed
-        self.last_state = last_state
+        # self.last_state = last_states
 
     @property
     def string(self) -> str:
@@ -713,6 +722,8 @@ class EditFAModal(miru.Modal):
         tf = values["tf"].split("|")
         self._transition_functions.value = "\n".join(tf)
 
+        self._ctx: miru.ModalContext | None = None
+
         self.states = ""
         self.alphabets = ""
         self.initial_state = ""
@@ -720,10 +731,6 @@ class EditFAModal(miru.Modal):
         self.transition_functions = ""
 
         super().__init__(title, custom_id=custom_id, timeout=timeout)
-
-    @property
-    def ctx(self) -> miru.ModalContext:
-        return self._ctx
 
     @property
     def ctx(self) -> miru.ModalContext:
@@ -780,20 +787,27 @@ class EditFAModal(miru.Modal):
             self.transitions_value,
         )
 
-    async def callback(self, context: miru.ModalContext) -> None:
+    async def callback(self, ctx: miru.ModalContext) -> None:
         self.fa = FA(
             self.states_value,
             self.alphabets_value,
             self.initial_value,
             self.finals_value,
             self.transitions_value,
-            context,
+            ctx,
         )
-        self._ctx = context
+        self._ctx = ctx
         self.stop()
 
 
 class InputStringModal(miru.Modal):
+
+    _string = miru.TextInput(
+        label="String",
+        placeholder="Input String",
+        value="",
+    )
+
     def __init__(
         self,
         fa: FA,
@@ -804,13 +818,8 @@ class InputStringModal(miru.Modal):
         timeout: float | int | timedelta | None = 300,
     ) -> None:
         self.fa = fa
-        self._string = miru.TextInput(
-            label="String",
-            placeholder="Input String",
-            required=True,
-            value=string,
-        )
-        self.add_item(self._string)
+        self._string.placeholder = fa.get_values()["alphabets"]
+        self._string.value = string
 
         self.string = string
 
@@ -822,6 +831,8 @@ class InputStringModal(miru.Modal):
 
     async def modal_check(self, ctx: miru.ModalContext) -> bool:
         content = ctx.values.get(self._string)
+        if content is None:
+            return True
 
         return set(content).issubset(self.fa.alphabets)
 

@@ -1,8 +1,10 @@
 from __future__ import annotations
+from datetime import timedelta
 
 import hikari
 import lightbulb
 import miru
+from miru.abc.item import InteractiveViewItem
 from miru.ext import menu
 
 from .classes import (
@@ -14,6 +16,36 @@ from .classes import (
     RegexPatterns,
     FAStringResult
 )
+
+
+class AutomataMenu(menu.Menu):
+
+    def __init__(
+        self,
+        *,
+        timeout: float | int | timedelta | None = 300,
+        autodefer: bool | miru.AutodeferOptions = True,
+    ) -> None:
+        super().__init__(timeout=timeout, autodefer=autodefer)
+
+    async def on_timeout(self) -> None:
+        self.clear_items()
+        return await super().on_timeout()
+
+    async def on_error(
+        self,
+        error: Exception,
+        item: InteractiveViewItem | None = None,
+        context: miru.ViewContext | None = None
+    ) -> None:
+        if context:
+            await context.respond(
+                "Something went wrong, please try again later.",
+                flags=hikari.MessageFlag.EPHEMERAL
+            )
+        for item in self.children:
+            item.disabled = True
+        await self.update_message()
 
 
 class MainScreen(menu.Screen):
@@ -31,6 +63,7 @@ class MainScreen(menu.Screen):
         self.fa = fa
         self.recent = recent
         self.inter = inter
+        print(inter.command.name)
         super().__init__(menu)
 
     def get_fa_from_string(self) -> FA:
@@ -57,41 +90,27 @@ class MainScreen(menu.Screen):
         )
         fa = self.fa
 
-        print("fa.states:", fa.states)
-        print("fa.states_str:", fa.states_str)
         name = "State" if len(fa.states) == 1 else "States"
-        print("Adding field:", name, fa.states_str)
         embed.add_field(name, fa.states_str)
 
-        print("fa.alphabets:", fa.alphabets)
-        print("fa.alphabets_str:", fa.alphabets_str)
         name = "Alphabet" if len(fa.alphabets) == 1 else "Alphabets"
-        print("Adding field:", name, fa.alphabets_str)
         embed.add_field(name, fa.alphabets_str)
 
-        print("fa.initial_state_str:", fa.initial_state_str)
         embed.add_field("Initial State", fa.initial_state_str)
 
-        print("fa.final_states:", fa.final_states)
-        print("fa.final_states_str:", fa.final_states_str)
         name = "State" if len(fa.final_states) == 1 else "States"
-        print("Adding field:", f"Final {name}", fa.final_states_str)
         embed.add_field(f"Final {name}", fa.final_states_str)
 
-        print("fa.t_func:", fa.t_func)
-        print("fa.t_func_str:", fa.t_func_str)
         name = "Function" if len(fa.t_func) == 1 else "Functions"
-        print("Adding field:", f"Transition {name}", fa.t_func_str)
         embed.add_field(f"Transition {name}", fa.t_func_str)
 
-        print("fa.get_diagram(image_ratio):", fa.get_diagram(image_ratio))
         embed.set_image(fa.get_diagram(image_ratio))
         if author_name or author_icon:
             embed.set_author(name=author_name, icon=author_icon)
 
         return embed
 
-    @menu.button(label="Test a String", style=hikari.ButtonStyle.SECONDARY)
+    @menu.button(label="Test a String")
     async def test_string_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
         await self.menu.push(TestStringScreen(self.menu, self))
 
@@ -100,6 +119,9 @@ class MainScreen(menu.Screen):
         modal = EditFAModal(self.fa)
         await ctx.respond_with_modal(modal)
         await modal.wait()
+        if not modal.ctx:
+            await ctx.respond("timed out.", flags=hikari.MessageFlag.EPHEMERAL)
+            return
         await modal.ctx.interaction.create_initial_response(
             hikari.ResponseType.DEFERRED_MESSAGE_CREATE
         )
@@ -117,10 +139,10 @@ class TestStringScreen(menu.Screen):
 
     @property
     def color(self) -> Color:
-        if self.menu.fa.is_accepted:
+        if self.result.is_accepted:
             return Color.GREEN
         else:
-            return Color.REDs
+            return Color.RED
 
     async def get_user_response(self) -> hikari.MessageCreateEvent:
         def check(event: hikari.MessageCreateEvent) -> bool:
@@ -144,7 +166,7 @@ class TestStringScreen(menu.Screen):
         return user_input
 
     async def build_content(self) -> menu.ScreenContent:
-        embeds = [self.main.get_fa_embed("16/9"), self.get_embed()]
+        embeds = [self.main.get_fa_embed("0.28125"), self.get_embed()]
         return menu.ScreenContent(
             embeds=embeds
         )
@@ -155,7 +177,7 @@ class TestStringScreen(menu.Screen):
             color=self.color
         )
         string = "ε" if self.result.string == "" else self.result.string
-        embed.add_field("String", string)
+        embed.add_field("String", f"`{string}`")
 
         is_passed = "✅" if self.result.is_accepted else "❌"
         embed.add_field("Result", is_passed)
@@ -163,11 +185,16 @@ class TestStringScreen(menu.Screen):
 
     @menu.button(label="Edit String")
     async def edit_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
-        modal = InputStringModal(self.menu.fa, self.result.string)
+        modal = InputStringModal(self.main.fa, self.result.string)
         await ctx.respond_with_modal(modal)
+        await modal.wait()
+        await modal.ctx.interaction.create_initial_response(
+            hikari.ResponseType.DEFERRED_MESSAGE_CREATE
+        )
         self.result = modal.result
-        await self.menu.update_message()
+        await self.menu.update_message(await self.build_content())
+        await modal.ctx.interaction.delete_initial_response()
 
-    @menu.button(label="Back")
+    @menu.button(label="Back", style=hikari.ButtonStyle.SECONDARY)
     async def back_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
-        self.menu.pop()
+        await self.menu.pop()
