@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import os
 import re
 import time
 from datetime import datetime, timedelta
-import mysql.connector
-from mysql.connector import Error
-import os
-from dotenv import load_dotenv
+
 import graphviz
 import hikari
 import lightbulb
 import miru
+import mysql.connector
+from mysql.connector import Error
+from dotenv import load_dotenv
 
 from .extensions import error_handler as error
 
