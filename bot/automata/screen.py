@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import asyncio
 from datetime import timedelta
 
 import hikari
@@ -15,6 +17,11 @@ from .classes import (
     ActionOptions,
     RegexPatterns,
     FAStringResult
+)
+
+from .buttons import (
+    ConvertButton,
+    MinimizeButton,
 )
 
 
@@ -50,6 +57,21 @@ class AutomataMenu(menu.Menu):
 
 class MainScreen(menu.Screen):
 
+    @menu.button(label="Test a String")
+    async def test_string_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
+        await self.menu.push(TestStringScreen(self.menu, self))
+
+    # @menu.button(label="Convert to DFA")
+    # async def convert_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
+    #     await self.menu.push(TestStringScreen(self.menu, self))
+    #     ...
+
+    # @menu.button(label="Minimize DFA", custom_id="minimize")
+    # async def minimize_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
+    #     await self.menu.push(TestStringScreen(self.menu, self))
+    #     ...
+
+
     def __init__(
         self,
         menu: menu.Menu,
@@ -63,8 +85,22 @@ class MainScreen(menu.Screen):
         self.fa = fa
         self.recent = recent
         self.inter = inter
-        print(inter.command.name)
+
+
+
         super().__init__(menu)
+
+        print("opahdolikahd")
+        if fa.is_dfa:
+            self.extra = MinimizeButton(fa)
+            self.add_item(self.extra)
+        elif fa.is_nfa:
+            self.extra = ConvertButton(fa)
+            self.add_item(self.extra)
+        # match inter.invoked.name:
+        #     case "string":
+        #         asyncio.create_task(self.menu.push(TestStringScreen(self.menu, self)))
+        #         self.menu.update_message()
 
     def get_fa_from_string(self) -> FA:
         ...
@@ -110,9 +146,10 @@ class MainScreen(menu.Screen):
 
         return embed
 
-    @menu.button(label="Test a String")
-    async def test_string_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
+    async def invoke_test_string(self) -> None:
         await self.menu.push(TestStringScreen(self.menu, self))
+        await self.menu.update_message()
+
 
     @menu.button(label="Edit", style=hikari.ButtonStyle.SECONDARY, row=1)
     async def edit_fa_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:

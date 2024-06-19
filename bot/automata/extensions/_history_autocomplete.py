@@ -93,4 +93,7 @@ async def history_autocomplete(
     except Error as e:
         print(f'Error: {e}')
 
+    if history == []:
+        return ["No past FA data found."]
+
     return history[:25]

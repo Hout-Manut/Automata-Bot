@@ -12,13 +12,16 @@ import miru
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
+import mysql.connector.cursor
 
 from .extensions import error_handler as error
+
 
 class Color(int):
     RED = 0xff6459
     GREEN = 0xa2e57b
     LIGHT_BLUE = 0x55c7f1
+    YELLOW = 0xf2ee78
 
 
 class ActionOptions(int):
@@ -132,7 +135,8 @@ class FA:
                     sql_query = 'INSERT INTO Recent (user_id, fa_name, states, alphabets, initial_state, final_states, transitions, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
                     # sql_query = 'SELECT * FROM History;'
 
-                    data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, date)
+                    data = (user_id, fa_name, states, alphabets,
+                            initial_state, final_states, tf, date)
                     cursor.execute(sql_query, data)
 
                     db_con.commit()
@@ -386,7 +390,7 @@ class FA:
             str: The path to the diagram.
         """
         file_name = self.author_name
-        margin = "0" if  ratio == "1" else "5"
+        margin = "0" if ratio == "1" else "5"
         graph = graphviz.Digraph(
             format="png",
             graph_attr={
@@ -403,9 +407,20 @@ class FA:
             },
         )
         with graph.subgraph(name="cluster_0") as c:
-            c.attr = {"shape": "square", "bgcolor": "#3a4348", "border": "0"}
-            c.node_attr = {"color": "#ffffff", "fillcolor": "transparent", "fontcolor": "#ffffff"}
-            c.edge_attr = {"color": "#ffffff", "fontcolor": "#ffffff", "len": "1"}
+            c.attr = {
+                "shape": "square",
+                "bgcolor": "#3a4348",
+            }
+            c.node_attr = {
+                "color": "#ffffff",
+                "fillcolor": "transparent",
+                "fontcolor": "#ffffff"
+            }
+            c.edge_attr = {
+                "color": "#ffffff",
+                "fontcolor": "#ffffff",
+                "len": "1"
+            }
             for state in self.states:
                 if state in self.final_states:
                     c.node(state, shape="doublecircle")
@@ -520,6 +535,74 @@ class FA:
 
         return True
 
+    @staticmethod
+    async def get_fa(ctx: lightbulb.SlashContext) -> FA:
+        """
+        Get the FA from the context depends on the command usage.
+
+        Either ask the user with a modal or retrieve the data from the database.
+
+        Args:
+            ctx (SlashContext): The context of the command.
+
+        Returns:
+            FA: The FA instance.
+        """
+        try:
+            recent: str = ctx.options.recent
+            fa_name, _ = recent.split(" ~ ")
+            if fa_name == "No past FA data found.":
+                await ctx.interaction.create_initial_response(
+                    hikari.ResponseType.MESSAGE_CREATE,
+                    content="Funny",
+                    flags=hikari.MessageFlag.EPHEMERAL,
+                )
+                raise error.UserError
+            cursor: mysql.connector.cursor.CursorBase = ctx.app.d.cursor
+            try:
+                query = """
+                    SELECT
+                        states,
+                        alphabets,
+                        initial_state,
+                        final_states,
+                        transitions
+                    FROM FA
+                    WHERE
+                        fa_name=%s
+                    AND
+                        user_id=%s;
+                """
+                cursor.execute(query, (fa_name, ctx.user.id))
+                result = cursor.fetchone()
+                if result is None:
+                    raise error.UserError("Could not find the FA in the database.")
+
+                states, alphabets, initial_state, final_states, transitions = result
+                fa = FA(
+                    states=str(states),
+                    alphabets=str(alphabets),
+                    initial_state=str(initial_state),
+                    final_states=str(final_states),
+                    transition_functions=str(transitions),
+                    ctx=ctx,
+                )
+                return fa
+
+            except Error as e:
+                raise error.UserError("Something went wrong while fetching the FA from the database.")
+        except AttributeError:
+            pass
+
+        modal = InputFAModal()
+        builder = modal.build_response(ctx.app.d.miru)
+        await builder.create_modal_response(ctx.interaction)
+        ctx.app.d.miru.start_modal(modal)
+        await modal.wait()
+
+        ctx = modal.ctx
+        return modal.fa
+
     def __str__(self) -> str:
         return f"FA({self.states}, {self.alphabets}, {self.initial_state}, {self.final_states}, {self.transition_functions})"
 
@@ -548,6 +631,7 @@ class FAStringResult:
     @property
     def is_accepted(self) -> bool:
         return self.passed
+
 
 class InputFAModal(miru.Modal):
 

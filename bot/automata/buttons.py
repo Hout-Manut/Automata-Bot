@@ -43,7 +43,7 @@ class ConvertButton(menu.ScreenButton):
         label: str = "Convert to DFA",
         *,
         emoji: hikari.Emoji | str | None = None,
-        style: hikari.ButtonStyle = hikari.ButtonStyle.SECONDARY,
+        style: hikari.ButtonStyle = hikari.ButtonStyle.PRIMARY,
         disabled: bool = False,
         custom_id: str | None = None,
         row: int | None = None,
@@ -65,29 +65,22 @@ class ConvertButton(menu.ScreenButton):
         raise NotImplementedError
 
 
-class MinimizeButton(miru.Button):
+class MinimizeButton(menu.ScreenButton):
 
     def __init__(
         self,
-        minimizeable: bool | None = None,
-        label: str = "Minimize a DFA",
+        fa: classes.FA,
+        label: str = "Minimize DFA",
         *,
         emoji: hikari.Emoji | str | None = None,
-        style: hikari.InteractiveButtonTypesT = hikari.ButtonStyle.SECONDARY,
-        disabled: bool | None = None,
+        style: hikari.ButtonStyle = hikari.ButtonStyle.PRIMARY,
+        disabled: bool = False,
         custom_id: str | None = None,
-        row: int = 0,
+        row: int | None = None,
         position: int | None = None,
-        autodefer: (
-            bool | miru.AutodeferOptions | hikari.UndefinedType
-        ) = hikari.UNDEFINED,
+        autodefer: bool | miru.AutodeferOptions | hikari.UndefinedType = hikari.UNDEFINED
     ) -> None:
-        disabled = (
-            (True if self.view.fa.is_minimized else False)
-            if minimizeable is None
-            else not minimizeable
-        )
-
+        self.fa = fa
         super().__init__(
             label,
             emoji=emoji,
@@ -96,8 +89,7 @@ class MinimizeButton(miru.Button):
             custom_id=custom_id,
             row=row,
             position=position,
-            autodefer=autodefer,
-        )
+            autodefer=autodefer)
 
     def callback(self, context: miru.ViewContext) -> None:
         raise NotImplementedError
