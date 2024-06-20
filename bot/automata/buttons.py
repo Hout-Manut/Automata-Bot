@@ -1,3 +1,5 @@
+from typing import Callable
+
 import hikari
 import lightbulb
 import miru
@@ -6,40 +8,11 @@ from miru.ext import menu
 from . import classes
 
 
-class TestStringButton(menu.ScreenButton):
-
-    def __init__(
-        self,
-        fa: classes.FA,
-        label: str = "Test a String",
-        *,
-        emoji: hikari.Emoji | str | None = None,
-        style: hikari.ButtonStyle = hikari.ButtonStyle.SECONDARY,
-        disabled: bool = False,
-        custom_id: str | None = None,
-        row: int | None = None,
-        position: int | None = None,
-        autodefer: bool | miru.AutodeferOptions | hikari.UndefinedType = hikari.UNDEFINED
-    ) -> None:
-        super().__init__(
-            label,
-            emoji=emoji,
-            style=style,
-            disabled=disabled,
-            custom_id=custom_id,
-            row=row,
-            position=position,
-            autodefer=autodefer)
-
-    def callback(self, context: miru.ViewContext) -> None:
-        raise NotImplementedError
-
-
 class ConvertButton(menu.ScreenButton):
 
     def __init__(
         self,
-        fa: classes.FA,
+        screen: menu.Screen,
         label: str = "Convert to DFA",
         *,
         emoji: hikari.Emoji | str | None = None,
@@ -50,7 +23,7 @@ class ConvertButton(menu.ScreenButton):
         position: int | None = None,
         autodefer: bool | miru.AutodeferOptions | hikari.UndefinedType = hikari.UNDEFINED
     ) -> None:
-        self.fa = fa
+        self.screen = screen
         super().__init__(
             label,
             emoji=emoji,
@@ -62,14 +35,17 @@ class ConvertButton(menu.ScreenButton):
             autodefer=autodefer)
 
     async def callback(self, context: miru.ViewContext) -> None:
-        raise NotImplementedError
+        new_fa = self.menu.fa.convert()
+        self.menu.fa = new_fa
+        self.screen.extra = MinimizeButton(self.screen, disabled=True)
+        await self.menu.update_message(await self.screen.build_content())
 
 
 class MinimizeButton(menu.ScreenButton):
 
     def __init__(
         self,
-        fa: classes.FA,
+        screen: menu.Screen,
         label: str = "Minimize DFA",
         *,
         emoji: hikari.Emoji | str | None = None,
@@ -80,7 +56,9 @@ class MinimizeButton(menu.ScreenButton):
         position: int | None = None,
         autodefer: bool | miru.AutodeferOptions | hikari.UndefinedType = hikari.UNDEFINED
     ) -> None:
-        self.fa = fa
+        self.screen = screen
+        if not disabled:
+            disabled = True if self.fa.is_minimized else False
         super().__init__(
             label,
             emoji=emoji,
@@ -89,10 +67,14 @@ class MinimizeButton(menu.ScreenButton):
             custom_id=custom_id,
             row=row,
             position=position,
-            autodefer=autodefer)
+            autodefer=autodefer
+        )
 
-    def callback(self, context: miru.ViewContext) -> None:
-        raise NotImplementedError
+    async def callback(self, context: miru.ViewContext) -> None:
+        new_fa = self.menu.fa.minimize()
+        self.disabled = True
+        self.menu.fa = new_fa
+        await self.menu.update_message(await self.screen.build_content())
 
 
 class SaveButton(miru.Button):

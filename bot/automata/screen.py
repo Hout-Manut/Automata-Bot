@@ -94,17 +94,17 @@ class MainScreen(miru_menu.Screen):
     ) -> None:
         super().__init__(menu)
         if self.menu.fa.is_dfa:
-            self.extra = MinimizeButton(self.menu.fa)
-            self.add_item(self.extra)
-        elif self.menu.fa.is_nfa:
-            self.extra = ConvertButton(self.menu.fa)
-            self.add_item(self.extra)
+            self.extra = MinimizeButton(self)
+        else:
+            self.extra = ConvertButton(self)
+
+        self.add_item(self.extra)
 
     @property
     def menu(self) -> AutomataMenu:
         return super().menu
 
-    async def build_content(self) -> miru_menu.ScreenContent:
+    async def build_content(self, extra_embeds: list[hikari.Embed] = []) -> miru_menu.ScreenContent:
         return miru_menu.ScreenContent(
             embed=self.menu.fa.get_embed()
         )
@@ -124,6 +124,10 @@ class MainScreen(miru_menu.Screen):
         await self.menu.update_message(await self.build_content())
         await modal.ctx.interaction.delete_initial_response()
 
+    async def minimize_callback(self, ctx: miru.ViewContext, btn: miru_menu.ScreenButton) -> None:
+        self.menu.fa.minimize()
+        self.extra.disabled = True
+        await self.menu.update_message(await self.build_content())
 
 class TestStringScreen(miru_menu.Screen):
 

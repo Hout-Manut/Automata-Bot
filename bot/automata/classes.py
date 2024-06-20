@@ -95,6 +95,7 @@ class FA:
         self.final_states = final_states
         self.transition_functions = transition_functions
         self.ctx = ctx
+        self._is_minimized = False
 
     def save_to_db(self, ctx: lightbulb.SlashContext | None = None) -> None:
         if not ctx:
@@ -241,13 +242,16 @@ class FA:
     def is_minimized(self) -> bool:
         """
         Returns True if the FA has been minimized once already.
+
+        Raises:
+            error.InvalidFAError: If the FA is not an DFA.
         """
         if self.is_nfa:
             raise error.InvalidFAError("The FA is not a DFA.")
 
-        raise NotImplementedError
+        return self._is_minimized
 
-    def nfa_to_dfa(self) -> FA:
+    def convert(self) -> FA:
         """
         Convert the NFA to a DFA.
 

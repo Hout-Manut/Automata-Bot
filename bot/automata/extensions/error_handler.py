@@ -21,10 +21,12 @@ class InvalidFAError(UserError):
     Raised when the provided FA data is invalid.
     """
 
+
 class InvalidNFAError(InvalidFAError):
     """
     Raised when the provided NFA data is invalid.
     """
+
 
 class InvalidDFAError(InvalidFAError):
     """
@@ -38,7 +40,8 @@ async def error_handler(event: lightbulb.CommandErrorEvent) -> None:
         error = event.exception.__cause__
         await event.context.respond(
             hikari.Embed(
-                title=type(error).__name__, description=error.args[0], color=0xCC0000
+                title=type(
+                    error).__name__, description=error.args[0], color=0xCC0000
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
         )
@@ -46,7 +49,11 @@ async def error_handler(event: lightbulb.CommandErrorEvent) -> None:
 
     if isinstance(event.exception, lightbulb.CommandInvocationError):
         await event.context.respond(
-            f"Something went wrong during invocation of command `{event.context.command.name}`.",
+            hikari.Embed(
+                title="Error",
+                description=f"Something went wrong during invocation of command `{event.context.command.name}`.",
+                color=0xCC0000
+            ),
             flags=hikari.MessageFlag.EPHEMERAL,
         )
         raise event.exception
