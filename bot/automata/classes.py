@@ -600,6 +600,7 @@ class FA:
         )
         await modal.ctx.interaction.delete_initial_response()
         fa = modal.fa
+        fa.save_to_db(ctx)
         return fa
 
     def __str__(self) -> str:
