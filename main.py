@@ -22,7 +22,6 @@ bot = lightbulb.BotApp(
     intents=hikari.Intents.ALL,
     help_class=None,
     ignore_bots=True,
-    prefix="+",
 )
 
 bot.d.miru = miru.Client(bot, ignore_unknown_interactions=True)
@@ -38,6 +37,7 @@ try:
     if db.is_connected():
         bot.d.db = db
         bot.d.cursor = db.cursor()
+        print("Database connection established.")
     else:
         raise SQLError
 

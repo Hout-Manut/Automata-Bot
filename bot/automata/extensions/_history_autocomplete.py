@@ -1,10 +1,14 @@
 from typing import Optional
+import hikari.commands
+import lightbulb
 import mysql.connector
 from mysql.connector import Error
 import hikari
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+
+import mysql.connector.cursor
 
 # Load environment variables from .env file
 load_dotenv()
@@ -50,50 +54,55 @@ def time_since(dt):
 async def history_autocomplete(
     opt: hikari.AutocompleteInteractionOption,
     inter: hikari.AutocompleteInteraction,
-    sort_by: int | None = Order.DATE_DESC,
-) -> list[str]:
-    query: str = opt.value      # The current input in the message field.
-    user_id = inter.user.id     # The user ID
+    plugin: lightbulb.Plugin,
+) -> list[hikari.commands.CommandChoice]:
+    query: str = opt.value        # The current input in the message field.
+    user_id = inter.user.id       # The user ID
 
-    history: list[str] = []
+    # The database cursor
+    cursor: mysql.connector.cursor.MySQLCursor = plugin.app.d.cursor
 
-    # TODO : Get history from db using user_id, sorted.
+    history: list[hikari.commands.CommandChoice] = []
+
     try:
-        db_con = mysql.connector.connect(
-            host=os.getenv('DB_HOST'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_NAME'),
-            # port=1201
-        )
+        sql_query = """
+        SELECT
+            id,
+            fa_name,
+            updated_at
+        FROM Recent
+        WHERE user_id=%s
+        ORDER BY updated_at DESC;
+        """
+        cursor.execute(sql_query, (user_id,))
+        result = cursor.fetchall()
+        # Debugging: print the result
+        # print("Query Result:", result)
 
-        if db_con.is_connected():
-            try:
-                cursor = db_con.cursor()
+        for row in result:
+            # print("Row:", row)  # Debugging: print each row
+            fa_id = row[0]
+            fa_name = row[1]
+            updated_at = row[2]
+            # print(f'{fa_name}\n{updated_at}')
 
-                sql_query = 'SELECT fa_name, updated_at FROM Recent WHERE user_id=%s ORDER BY updated_at DESC;'
-                cursor.execute(sql_query, (user_id,))
-                result = cursor.fetchall()
-                # Debugging: print the result
-                # print("Query Result:", result)
+            time_ago = time_since(updated_at)
 
-                for row in result:
-                    # print("Row:", row)  # Debugging: print each row
-                    fa_name = row[0]
-                    updated_at = row[1]
-                    # print(f'{fa_name}\n{updated_at}')
+            formatted_template = f"{fa_name} ~ {time_ago}"
 
-                    time_ago = time_since(updated_at)
-
-                    formatted_template = f"{fa_name} ~ {time_ago}"
-                    history.append(formatted_template)
-            except Error as e:
-                print(f'Retrieving Data Unsucessfully: {e}')
-
+            choice = hikari.commands.CommandChoice(
+                name=formatted_template,
+                value=str(fa_id)
+                )
+            history.append(choice)
     except Error as e:
-        print(f'Error: {e}')
+        print(f'Retrieving Data Unsucessfully: {e}')
 
     if history == []:
-        return ["No past FA data found."]
+        choice = hikari.commands.CommandChoice(
+            name="No past FA data found.",
+            value="0"
+        )
+        return [choice]
 
     return history[:25]

@@ -28,8 +28,20 @@ Date: 2024-06-16
 
 Date: 2024-06-17 - Manut
 
-+ Changes:
++ Main Changes:
 - Made a filter for recent.py to remove " ~ {time ago}"
 
 + Minor Changes:
 - Added plural check for the helper function "time_since()"
+
+Date: 2024-06-20
+
++ Main Changes
+- Reworked db connection to connect once the bot started
+    Access the db and cursor by using: ctx.app.d.db and ctx.app.d.cursor
+- Changed the autocomplete function to also pass the id of the fa_data
+    Only the id get passed as value when the user submit the recent command correctly
+- Implemented the test string command
+
++ Minor changes
+- Made stuffs cleaner

@@ -17,6 +17,9 @@ import mysql.connector.cursor
 from .extensions import error_handler as error
 
 
+transitionT = dict[tuple[str, str], set[str]]
+
+
 class Color(int):
     RED = 0xff6459
     GREEN = 0xa2e57b
@@ -54,7 +57,7 @@ class FA:
         initial_state: str = "",
         final_states: set[str] = set(),
         transition_functions: dict[tuple[str, str], set[str]] = {},
-        ctx: lightbulb.Context | None = None,
+        ctx: lightbulb.SlashContext | None = None,
     ) -> None:
         """
         Initialize a new FA instance.
@@ -93,7 +96,9 @@ class FA:
         self.transition_functions = transition_functions
         self.ctx = ctx
 
-    def save_to_db(self, ctx: lightbulb.SlashContext) -> None:
+    def save_to_db(self, ctx: lightbulb.SlashContext | None = None) -> None:
+        if not ctx:
+            ctx = self.ctx
 
         template = "{fa} with {num_states} states, {num_alphabets} inputs. Starts at {initial_state}."
 
@@ -120,36 +125,35 @@ class FA:
         )
 
         try:
-            db_con = mysql.connector.connect(
-                host=os.getenv('DB_HOST'),
-                user=os.getenv('DB_USER'),
-                password=os.getenv('DB_PASSWORD'),
-                database=os.getenv('DB_NAME'),
-                # port=int(os.getenv('DB_PORT'))
+            cursor: mysql.connector.cursor.MySQLCursor = ctx.app.d.cursor
+
+            sql_query = """
+            INSERT INTO Recent (
+                user_id,
+                fa_name,
+                states,
+                alphabets,
+                initial_state,
+                final_states,
+                transitions,
+                updated_at
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s
             )
+            """
+            # sql_query = 'SELECT * FROM History;'
 
-            if db_con.is_connected():
-                try:
-                    cursor = db_con.cursor()
+            data = (user_id, fa_name, states, alphabets,
+                    initial_state, final_states, tf, date)
+            cursor.execute(sql_query, data)
 
-                    sql_query = 'INSERT INTO Recent (user_id, fa_name, states, alphabets, initial_state, final_states, transitions, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
-                    # sql_query = 'SELECT * FROM History;'
+            ctx.app.d.db.commit()
 
-                    data = (user_id, fa_name, states, alphabets,
-                            initial_state, final_states, tf, date)
-                    cursor.execute(sql_query, data)
-
-                    db_con.commit()
-
-                    # for row in cursor:
-                    #     print(row)
-
-                except Error as e:
-                    print(f'Inserting data unsucessfully: {e}')
+            # for row in cursor:
+            #     print(row)
 
         except Error as e:
-            print(f'Error: {e}')
-        pass
+            print(f'Inserting data unsucessfully: {e}')
 
     @property
     def is_nfa(self) -> bool:
@@ -302,73 +306,39 @@ class FA:
             "tf": tf,
         }
 
+
     def get_embed(
         self,
-        *,
-        title: str | None = None,
-        description: str | None = None,
-        url: str | None = None,
-        color: hikari.Colourish | None = None,
-        colour: hikari.Colorish | None = None,
-        time_stamp: datetime | None = None,
-        field_inline: bool | None = False,
-        footer_text: str | None = None,
-        footer_icon: hikari.Resourceish | None = None,
+        image_ratio: str = "1",
         author_name: str | None = None,
-        author_url: str | None = None,
-        author_icon: hikari.Resourceish | None = None,
-        with_diagram: bool | None = False,
-        as_thumbnail: bool | None = False,
+        author_icon: hikari.Resourceish | None = None
     ) -> hikari.Embed:
-        if not title:
-            title = "Deterministic" if self.is_dfa else "Non-deterministic"
-            title += " Finite Automaton"
 
+        title = "Deterministic" if self.is_dfa else "Non-deterministic"
+        title += " Finite Automation"
         embed = hikari.Embed(
             title=title,
-            description=description,
-            url=url,
-            color=color,
-            colour=colour,
-            timestamp=time_stamp,
+            description=None,
+            color=Color.LIGHT_BLUE
         )
 
         name = "State" if len(self.states) == 1 else "States"
-        embed.add_field(name=name, value=self.states_str, inline=field_inline)
+        embed.add_field(name, self.states_str)
 
         name = "Alphabet" if len(self.alphabets) == 1 else "Alphabets"
-        embed.add_field(name=name, value=self.alphabets_str,
-                        inline=field_inline)
+        embed.add_field(name, self.alphabets_str)
 
-        embed.add_field(
-            name="Initial State", value=self.initial_state_str, inline=field_inline
-        )
+        embed.add_field("Initial State", self.initial_state_str)
 
-        name = "Final State" if len(self.final_states) == 1 else "Final States"
-        embed.add_field(name=name, value=self.final_states_str,
-                        inline=field_inline)
+        name = "State" if len(self.final_states) == 1 else "States"
+        embed.add_field(f"Final {name}", self.final_states_str)
 
-        name = (
-            "Transition Function"
-            if len(self.transition_functions) == 1
-            else "Transition Functions"
-        )
-        embed.add_field(
-            name=name, value=self.transition_functions_str, inline=field_inline
-        )
+        name = "Function" if len(self.t_func) == 1 else "Functions"
+        embed.add_field(f"Transition {name}", self.t_func_str)
 
-        if with_diagram:
-            if as_thumbnail:
-                embed.set_thumbnail(self.get_diagram())
-            else:
-                embed.set_image(self.get_diagram())
-
-        if footer_text:
-            embed.set_footer(text=footer_text, icon=footer_icon)
-
-        if author_name:
-            embed.set_author(name=author_name,
-                             url=author_url, icon=author_icon)
+        embed.set_image(self.get_diagram(image_ratio))
+        if author_name or author_icon:
+            embed.set_author(name=author_name, icon=author_icon)
 
         return embed
 
@@ -536,7 +506,62 @@ class FA:
         return True
 
     @staticmethod
-    async def get_fa(ctx: lightbulb.SlashContext) -> FA:
+    def get_fa_from_db(fa_id : int,ctx: lightbulb.SlashContext) -> FA:
+        try:
+            cursor: mysql.connector.cursor.MySQLCursor = ctx.app.d.cursor
+            query = """
+                SELECT
+                    states,
+                    alphabets,
+                    initial_state,
+                    final_states,
+                    transitions
+                FROM Recent
+                WHERE
+                    id=%s
+                AND
+                    user_id=%s;
+            """
+            cursor.execute(query, (str(fa_id), ctx.user.id))
+            result = cursor.fetchone()
+            if result is None:
+                raise error.UserError
+
+            states_str = str(result[0])
+            alphabets_str = str(result[1])
+            initial_state = str(result[2])
+            final_states_str = str(result[3])
+            transitions_str = str(result[4])
+
+            states = RegexPatterns.STATES.findall(states_str)
+            alphabets = RegexPatterns.ALPHABETS.findall(alphabets_str)
+            final_states = RegexPatterns.STATES.findall(final_states_str)
+
+            transitions: transitionT = {}
+            values =  transitions_str.split("|")
+            for value in values:
+                match = RegexPatterns.TF.match(value.strip())
+                if match:
+                    k0, k1, _, v = match.groups()
+                    if (k0, k1) in transitions:
+                        transitions[(k0, k1)].add(v)
+                    else:
+                        transitions[(k0, k1)] = {v}
+
+            fa = FA(
+                states=set(states),
+                alphabets=set(alphabets),
+                initial_state=initial_state,
+                final_states=set(final_states),
+                transition_functions=transitions,
+                ctx=ctx,
+            )
+            return fa
+        except Error as e:
+            raise error.AutomataError("Something went wrong while fetching the FA from the database.: " + e.args[1])
+
+    @staticmethod
+    async def ask_or_get_fa(ctx: lightbulb.SlashContext) -> FA:
         """
         Get the FA from the context depends on the command usage.
 
@@ -550,58 +575,32 @@ class FA:
         """
         try:
             recent: str = ctx.options.recent
-            fa_name, _ = recent.split(" ~ ")
-            if fa_name == "No past FA data found.":
-                await ctx.interaction.create_initial_response(
-                    hikari.ResponseType.MESSAGE_CREATE,
-                    content="Funny",
-                    flags=hikari.MessageFlag.EPHEMERAL,
-                )
-                raise error.UserError
-            cursor: mysql.connector.cursor.CursorBase = ctx.app.d.cursor
+            if recent == "":
+                raise AttributeError
             try:
-                query = """
-                    SELECT
-                        states,
-                        alphabets,
-                        initial_state,
-                        final_states,
-                        transitions
-                    FROM FA
-                    WHERE
-                        fa_name=%s
-                    AND
-                        user_id=%s;
-                """
-                cursor.execute(query, (fa_name, ctx.user.id))
-                result = cursor.fetchone()
-                if result is None:
-                    raise error.UserError("Could not find the FA in the database.")
+                fa_id = int(recent)
+            except ValueError:
+                await ctx.respond("Invalid input.", flags=hikari.MessageFlag.EPHEMERAL)
+                raise error.UserError
+            if fa_id == 0:
+                await ctx.respond("Funny.", flags=hikari.MessageFlag.EPHEMERAL)
+                raise error.UserError
 
-                states, alphabets, initial_state, final_states, transitions = result
-                fa = FA(
-                    states=str(states),
-                    alphabets=str(alphabets),
-                    initial_state=str(initial_state),
-                    final_states=str(final_states),
-                    transition_functions=str(transitions),
-                    ctx=ctx,
-                )
-                return fa
-
-            except Error as e:
-                raise error.UserError("Something went wrong while fetching the FA from the database.")
+            return FA.get_fa_from_db(fa_id, ctx)
         except AttributeError:
-            pass
+            pass  # No recent data given, asking the user instead
 
         modal = InputFAModal()
         builder = modal.build_response(ctx.app.d.miru)
         await builder.create_modal_response(ctx.interaction)
         ctx.app.d.miru.start_modal(modal)
         await modal.wait()
-
-        ctx = modal.ctx
-        return modal.fa
+        await modal.ctx.interaction.create_initial_response(
+            hikari.ResponseType.DEFERRED_MESSAGE_CREATE,
+        )
+        await modal.ctx.interaction.delete_initial_response()
+        fa = modal.fa
+        return fa
 
     def __str__(self) -> str:
         return f"FA({self.states}, {self.alphabets}, {self.initial_state}, {self.final_states}, {self.transition_functions})"

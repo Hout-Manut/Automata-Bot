@@ -7,7 +7,7 @@ import hikari
 import lightbulb
 import miru
 from miru.abc.item import InteractiveViewItem
-from miru.ext import menu
+from miru.ext import menu as miru_menu
 
 from .classes import (
     FA,
@@ -25,15 +25,27 @@ from .buttons import (
 )
 
 
-class AutomataMenu(menu.Menu):
+class AutomataMenu(miru_menu.Menu):
 
     def __init__(
         self,
+        fa: FA,
+        ctx: lightbulb.Context,
         *,
         timeout: float | int | timedelta | None = 300,
         autodefer: bool | miru.AutodeferOptions = True,
     ) -> None:
+        self._fa = fa
+        self.ctx = ctx
         super().__init__(timeout=timeout, autodefer=autodefer)
+
+    @property
+    def fa(self) -> FA:
+        return self._fa
+
+    @fa.setter
+    def fa(self, value: FA) -> None:
+        self._fa = value
 
     async def on_timeout(self) -> None:
         self.clear_items()
@@ -55,18 +67,22 @@ class AutomataMenu(menu.Menu):
         await self.update_message()
 
 
-class MainScreen(menu.Screen):
+    async def view_check(self, context: miru.ViewContext) -> bool:
+        return context.user.id == self.ctx.author.id
 
-    @menu.button(label="Test a String")
-    async def test_string_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
+
+class MainScreen(miru_menu.Screen):
+
+    @miru_menu.button(label="Test a String")
+    async def test_string_callback(self, ctx: miru.ViewContext, btn: miru_menu.ScreenButton) -> None:
         await self.menu.push(TestStringScreen(self.menu, self))
 
-    # @menu.button(label="Convert to DFA")
+    # @miru_menu.button(label="Convert to DFA")
     # async def convert_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
     #     await self.menu.push(TestStringScreen(self.menu, self))
     #     ...
 
-    # @menu.button(label="Minimize DFA", custom_id="minimize")
+    # @miru_menu.button(label="Minimize DFA", custom_id="minimize")
     # async def minimize_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
     #     await self.menu.push(TestStringScreen(self.menu, self))
     #     ...
@@ -74,85 +90,27 @@ class MainScreen(menu.Screen):
 
     def __init__(
         self,
-        menu: menu.Menu,
-        fa: FA | str,
-        recent: str | None = None,
-        inter: lightbulb.SlashContext | None = None
+        menu: AutomataMenu,
     ) -> None:
-        if isinstance(fa, str):
-            fa = self.get_fa_from_string()
-
-        self.fa = fa
-        self.recent = recent
-        self.inter = inter
-
-
-
         super().__init__(menu)
-
-        print("opahdolikahd")
-        if fa.is_dfa:
-            self.extra = MinimizeButton(fa)
+        if self.menu.fa.is_dfa:
+            self.extra = MinimizeButton(self.menu.fa)
             self.add_item(self.extra)
-        elif fa.is_nfa:
-            self.extra = ConvertButton(fa)
+        elif self.menu.fa.is_nfa:
+            self.extra = ConvertButton(self.menu.fa)
             self.add_item(self.extra)
-        # match inter.invoked.name:
-        #     case "string":
-        #         asyncio.create_task(self.menu.push(TestStringScreen(self.menu, self)))
-        #         self.menu.update_message()
 
-    def get_fa_from_string(self) -> FA:
-        ...
+    @property
+    def menu(self) -> AutomataMenu:
+        return super().menu
 
-    async def build_content(self) -> menu.ScreenContent:
-        return menu.ScreenContent(
-            embed=self.get_fa_embed()
+    async def build_content(self) -> miru_menu.ScreenContent:
+        return miru_menu.ScreenContent(
+            embed=self.menu.fa.get_embed()
         )
 
-    def get_fa_embed(
-        self,
-        image_ratio: str = "1",
-        author_name: str | None = None,
-        author_icon: hikari.Resourceish | None = None
-    ) -> hikari.Embed:
-
-        title = "Deterministic" if self.fa.is_dfa else "Non-deterministic"
-        title += " Finite Automation"
-        embed = hikari.Embed(
-            title=title,
-            description=None,
-            color=Color.LIGHT_BLUE
-        )
-        fa = self.fa
-
-        name = "State" if len(fa.states) == 1 else "States"
-        embed.add_field(name, fa.states_str)
-
-        name = "Alphabet" if len(fa.alphabets) == 1 else "Alphabets"
-        embed.add_field(name, fa.alphabets_str)
-
-        embed.add_field("Initial State", fa.initial_state_str)
-
-        name = "State" if len(fa.final_states) == 1 else "States"
-        embed.add_field(f"Final {name}", fa.final_states_str)
-
-        name = "Function" if len(fa.t_func) == 1 else "Functions"
-        embed.add_field(f"Transition {name}", fa.t_func_str)
-
-        embed.set_image(fa.get_diagram(image_ratio))
-        if author_name or author_icon:
-            embed.set_author(name=author_name, icon=author_icon)
-
-        return embed
-
-    async def invoke_test_string(self) -> None:
-        await self.menu.push(TestStringScreen(self.menu, self))
-        await self.menu.update_message()
-
-
-    @menu.button(label="Edit", style=hikari.ButtonStyle.SECONDARY, row=1)
-    async def edit_fa_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
+    @miru_menu.button(label="Edit", style=hikari.ButtonStyle.SECONDARY, row=1)
+    async def edit_fa_callback(self, ctx: miru.ViewContext, btn: miru_menu.ScreenButton) -> None:
         modal = EditFAModal(self.fa)
         await ctx.respond_with_modal(modal)
         await modal.wait()
@@ -162,17 +120,21 @@ class MainScreen(menu.Screen):
         await modal.ctx.interaction.create_initial_response(
             hikari.ResponseType.DEFERRED_MESSAGE_CREATE
         )
-        self.fa = modal.fa
+        self.menu.fa = modal.fa
         await self.menu.update_message(await self.build_content())
         await modal.ctx.interaction.delete_initial_response()
 
 
-class TestStringScreen(menu.Screen):
+class TestStringScreen(miru_menu.Screen):
 
-    def __init__(self, menu: menu.Menu, main: MainScreen) -> None:
+    def __init__(self, menu: AutomataMenu, main: MainScreen | None = None) -> None:
         self.main = main
         self.result = FAStringResult()
         super().__init__(menu)
+
+    @property
+    def menu(self) -> AutomataMenu:
+        return super().menu
 
     @property
     def color(self) -> Color:
@@ -202,9 +164,9 @@ class TestStringScreen(menu.Screen):
         )
         return user_input
 
-    async def build_content(self) -> menu.ScreenContent:
-        embeds = [self.main.get_fa_embed("0.28125"), self.get_embed()]
-        return menu.ScreenContent(
+    async def build_content(self) -> miru_menu.ScreenContent:
+        embeds = [self.menu.fa.get_embed("0.28125"), self.get_embed()]
+        return miru_menu.ScreenContent(
             embeds=embeds
         )
 
@@ -220,9 +182,9 @@ class TestStringScreen(menu.Screen):
         embed.add_field("Result", is_passed)
         return embed
 
-    @menu.button(label="Edit String")
-    async def edit_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
-        modal = InputStringModal(self.main.fa, self.result.string)
+    @miru_menu.button(label="Edit String")
+    async def edit_callback(self, ctx: miru.ViewContext, btn: miru_menu.ScreenButton) -> None:
+        modal = InputStringModal(self.menu.fa, self.result.string)
         await ctx.respond_with_modal(modal)
         await modal.wait()
         await modal.ctx.interaction.create_initial_response(
@@ -232,6 +194,9 @@ class TestStringScreen(menu.Screen):
         await self.menu.update_message(await self.build_content())
         await modal.ctx.interaction.delete_initial_response()
 
-    @menu.button(label="Back", style=hikari.ButtonStyle.SECONDARY)
-    async def back_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
-        await self.menu.pop()
+    @miru_menu.button(label="Back", style=hikari.ButtonStyle.SECONDARY)
+    async def back_callback(self, ctx: miru.ViewContext, btn: miru_menu.ScreenButton) -> None:
+        if self.main:
+            await self.menu.pop()
+        else:
+            await self.menu.push(MainScreen(self.menu))
