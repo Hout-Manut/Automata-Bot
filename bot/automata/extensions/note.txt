@@ -34,7 +34,7 @@ Date: 2024-06-17 - Manut
 + Minor Changes:
 - Added plural check for the helper function "time_since()"
 
-Date: 2024-06-20
+Date: 2024-06-20 - Manut
 
 + Main Changes
 - Reworked db connection to connect once the bot started
@@ -45,3 +45,12 @@ Date: 2024-06-20
 
 + Minor changes
 - Made stuffs cleaner
+
+Date: 2024-06-21 - Manut
+
++ Main Changes
+- Implemented the convert button from nfa to dfa (not the command yet)
+
++ Minor Changes
+- Finalized the diagram color scheme (maybe)
+- Made the DB work with "'" as state names.
