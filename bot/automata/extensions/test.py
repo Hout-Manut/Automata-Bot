@@ -22,30 +22,16 @@ async def test_cmd(ctx: lightbulb.SlashContext) -> None: ...
 @lightbulb.command("fa", "Test if the FA is non-deterministic or deterministic")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def test_fa_cmd(ctx: lightbulb.SlashContext) -> None:
-    modal = automata.InputFAModal()
-    builder = modal.build_response(ctx.app.d.miru)
-    await builder.create_modal_response(ctx.interaction)
-    ctx.app.d.miru.start_modal(modal)
-    await modal.wait()
-    await modal.ctx.interaction.create_initial_response(
-        hikari.ResponseType.DEFERRED_MESSAGE_CREATE,
-    )
+    fa = await automata.FA.ask_or_get_fa(ctx)
 
-    fa = modal.fa
-
-    modal.fa.save_to_db(ctx)
-    menu = automata.AutomataMenu(timeout=600)
-    main_screen = automata.MainScreen(menu, fa=fa, inter=ctx)
+    menu = automata.AutomataMenu(fa, ctx, timeout=600)
     builder = await menu.build_response_async(
         ctx.app.d.miru,
-        main_screen
+        automata.MainScreen(menu)
     )
-    await main_screen.invoke_test_string()
-    await builder.create_followup(ctx.interaction)
-    await modal.ctx.interaction.delete_initial_response()
+    message = await builder.create_followup(ctx.interaction)
 
-    # Start the design menu
-    ctx.app.d.miru.start_view(menu)
+    ctx.app.d.miru.start_view(menu, bind_to=message)
 
 @test_cmd.child
 @lightbulb.option(

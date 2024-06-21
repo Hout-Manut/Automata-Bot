@@ -30,7 +30,7 @@ class AutomataMenu(miru_menu.Menu):
     def __init__(
         self,
         fa: FA,
-        ctx: lightbulb.Context,
+        ctx: lightbulb.SlashContext,
         *,
         timeout: float | int | timedelta | None = 300,
         autodefer: bool | miru.AutodeferOptions = True,
@@ -47,6 +47,15 @@ class AutomataMenu(miru_menu.Menu):
     def fa(self, value: FA) -> None:
         self._fa = value
 
+    # async def build_response_async(
+    #     self,
+    #     client: miru.Client,
+    #     starting_screen: miru_menu.Screen,
+    #     *,
+    #     ephemeral: bool = False
+    # ) -> miru.MessageBuilder:
+    #     return await super().build_response_async(client, starting_screen, ephemeral=ephemeral)
+
     async def on_timeout(self) -> None:
         self.clear_items()
         return await super().on_timeout()
@@ -62,10 +71,10 @@ class AutomataMenu(miru_menu.Menu):
                 "Something went wrong, please try again later.",
                 flags=hikari.MessageFlag.EPHEMERAL
             )
+            raise error
         for item in self.children:
             item.disabled = True
         await self.update_message()
-
 
     async def view_check(self, context: miru.ViewContext) -> bool:
         return context.user.id == self.ctx.author.id
@@ -87,16 +96,15 @@ class MainScreen(miru_menu.Screen):
     #     await self.menu.push(TestStringScreen(self.menu, self))
     #     ...
 
-
     def __init__(
         self,
         menu: AutomataMenu,
     ) -> None:
         super().__init__(menu)
         if self.menu.fa.is_dfa:
-            self.extra = MinimizeButton(self)
+            self.extra = MinimizeButton()
         else:
-            self.extra = ConvertButton(self)
+            self.extra = ConvertButton()
 
         self.add_item(self.extra)
 
@@ -104,9 +112,20 @@ class MainScreen(miru_menu.Screen):
     def menu(self) -> AutomataMenu:
         return super().menu
 
-    async def build_content(self, extra_embeds: list[hikari.Embed] = []) -> miru_menu.ScreenContent:
+    async def build_content(self) -> miru_menu.ScreenContent:
+        embeds = [self.menu.fa.get_embed()]
+        if self.menu.ctx.invoked.name == "fa":
+            result = "Deterministic" if self.menu.fa.is_dfa else "Non-Deterministic"
+            embed = hikari.Embed(
+                title="Finite Automation Test",
+                color=Color.LIGHT_BLUE
+            ).add_field(
+                "Result",
+                f"**{result}**"
+            )
+            embeds.append(embed)
         return miru_menu.ScreenContent(
-            embed=self.menu.fa.get_embed()
+            embeds=embeds
         )
 
     @miru_menu.button(label="Edit", style=hikari.ButtonStyle.SECONDARY, row=1)
@@ -128,6 +147,7 @@ class MainScreen(miru_menu.Screen):
         self.menu.fa.minimize()
         self.extra.disabled = True
         await self.menu.update_message(await self.build_content())
+
 
 class TestStringScreen(miru_menu.Screen):
 
