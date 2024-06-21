@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import time
+from copy import deepcopy
 from datetime import datetime, timedelta
 
 import graphviz
@@ -17,7 +18,7 @@ import mysql.connector.cursor
 from .extensions import error_handler as error
 
 
-transitionT = dict[tuple[str, str], set[str]]
+TransitionT = dict[tuple[str, str], set[str]]
 
 
 class Color(int):
@@ -36,13 +37,11 @@ class ActionOptions(int):
 
 
 class RegexPatterns:
-    BACKSPACE = re.compile(r"-(\d+)\s*$")
-
-    STATES = re.compile(r"\b\w+\b")
-    ALPHABETS = re.compile(r"\w+")
-    INITIAL_STATE = re.compile(r"\b\w+\b")
-    FINAL_STATES = re.compile(r"\b\w+\b")
-    TF = re.compile(r"\b(\w+)\s*[,\s]\s*(\w+)\s*(=|>|->)\s*(\w+)\b")
+    STATES = re.compile(r"\b[\w']+\b")
+    ALPHABETS = re.compile(r"[\w']+")
+    INITIAL_STATE = re.compile(r"\b[\w']+\b")
+    FINAL_STATES = re.compile(r"\b[\w']+\b")
+    TF = re.compile(r"\b([\w']+)\s*[,\s]\s*([\w']+)\s*(=|>|->)\s*([\w']+)\b")
 
 
 class FA:
@@ -214,12 +213,18 @@ class FA:
         A string representation of the transition functions of the FA.
         """
         tf = ""
+        sorted_dict = dict(
+            sorted(
+                self.t_func.items(),
+                key=lambda item: (item[0][0], item[0][1])
+            )
+        )
         if self.is_dfa:
-            for (from_state, symbol), to_state in self.transition_functions.items():
+            for (from_state, symbol), to_state in sorted_dict.items():
                 symbol = "ε" if symbol == "" else symbol
-                tf += f"(`{from_state}`, `{symbol}`) -> `{to_state.pop()}`\n"
+                tf += f"(`{from_state}`, `{symbol}`) -> `{next(iter(to_state))}`\n"
         else:
-            for (from_state, symbol), to_states in self.transition_functions.items():
+            for (from_state, symbol), to_states in sorted_dict.items():
                 symbol = "ε" if symbol == "" else symbol
                 tf += f"(`{from_state}`, `{symbol}`) -> {{`{'`, `'.join(to_states)}`}}\n"
         return tf
@@ -251,7 +256,86 @@ class FA:
 
         return self._is_minimized
 
-    def convert(self) -> FA:
+    def epsilon_closure(self, state: str) -> set[str]:
+        """Epsilon closure of a state"""
+        stack = [state]
+        closure = {state}
+
+        while stack:
+            current_state = stack.pop()
+            if (current_state, '') in self.t_func:
+                for next_state in self.transition_function[(current_state, '')]:
+                    if next_state not in closure:
+                        closure.add(next_state)
+                        stack.append(next_state)
+
+        return closure
+
+    def epsilon_closure_set(self, states: set[str]) -> set[str]:
+        """Epsilon closure of a set of states"""
+        closure = set()
+        for state in states:
+            closure |= self.epsilon_closure(state)
+        return closure
+
+    def move(self, states: set[str], symbol: str) -> set[str]:
+        new_states = set()
+        for state in states:
+            if (state, symbol) in self.t_func:
+                new_states |= set(self.t_func[(state, symbol)])
+
+        return new_states
+
+    def nfa_to_dfa(self) -> FA:
+        initial_closure = self.epsilon_closure(self.initial_state)
+        dfa_states = {frozenset(initial_closure): "q'0"}
+        dfa_states_list = [initial_closure]
+        dfa_transition_functions: TransitionT = {}
+        dfa_final_states = set()
+
+        unmarked_states = [initial_closure]
+        state_counter = 1
+
+        while unmarked_states:
+            current_state = unmarked_states.pop()
+            current_state_name = dfa_states[frozenset(current_state)]
+
+            for symbol in self.alphabets:
+                next_state = self.move(current_state, symbol)
+                next_closure = self.epsilon_closure_set(next_state)
+
+                if frozenset(next_closure) not in dfa_states:
+                    new_state_name = f"q'{state_counter}"
+                    dfa_states[frozenset(next_closure)] = new_state_name
+                    dfa_states_list.append(next_closure)
+                    unmarked_states.append(next_closure)
+                    state_counter += 1
+
+                dfa_transition_functions[
+                    (current_state_name, symbol)
+                ] = {dfa_states[frozenset(next_closure)]}
+            if any(state in self.final_states for state in current_state):
+                dfa_final_states.add(current_state_name)
+
+        new_state_set = set(dfa_states.values())
+        new_alphabets = self.alphabets
+        new_initial_state = dfa_states[frozenset(initial_closure)]
+        new_final_states = dfa_final_states
+        new_transition_functions = {
+            (current, symbol): to for
+            (current, symbol), to in dfa_transition_functions.items()
+        }
+        new_fa = FA(
+            new_state_set,
+            new_alphabets,
+            new_initial_state,
+            new_final_states,
+            new_transition_functions,
+            self.ctx,
+        )
+        return new_fa
+
+    async def convert(self) -> FA:
         """
         Convert the NFA to a DFA.
 
@@ -264,7 +348,7 @@ class FA:
         if self.is_dfa:
             raise error.InvalidFAError("The FA is already a DFA.")
 
-        raise NotImplementedError
+        return self.nfa_to_dfa()
 
     def minimize(self) -> FA:
         """
@@ -309,7 +393,6 @@ class FA:
             "final_states": final_states_str,
             "tf": tf,
         }
-
 
     def get_embed(
         self,
@@ -364,12 +447,12 @@ class FA:
             str: The path to the diagram.
         """
         file_name = self.author_name
-        margin = "0" if ratio == "1" else "5"
+        margin = "0" if ratio == "1" else "5,0"
         graph = graphviz.Digraph(
             format="png",
             graph_attr={
                 "bgcolor": "#383a40",
-                # "color": "transparent",
+                "color": "transparent",
                 "fillcolor": "#383a40",
                 "size": "10,10",
                 "ratio": ratio,
@@ -378,23 +461,24 @@ class FA:
                 "beautify": "true",
                 "smoothing": "avg_dist",
                 "orientation": "90",
+                "rankdir": "LR",
             },
         )
         with graph.subgraph(name="cluster_0") as c:
             c.attr = {
-                "shape": "square",
+                "ratio": "1",
                 "bgcolor": "#3a4348",
             }
-            c.node_attr = {
-                "color": "#ffffff",
-                "fillcolor": "transparent",
-                "fontcolor": "#ffffff"
-            }
-            c.edge_attr = {
-                "color": "#ffffff",
-                "fontcolor": "#ffffff",
-                "len": "1"
-            }
+            c.node_attr.update(
+                color="#ffffff",
+                fillcolor="transparent",
+                fontcolor="#ffffff"
+            )
+            c.edge_attr.update(
+                color="#ffffff",
+                fontcolor="#ffffff",
+                len="1"
+            )
             for state in self.states:
                 if state in self.final_states:
                     c.node(state, shape="doublecircle")
@@ -510,9 +594,10 @@ class FA:
         return True
 
     @staticmethod
-    def get_fa_from_db(fa_id : int,ctx: lightbulb.SlashContext) -> FA:
+    def get_fa_from_db(fa_id: int, ctx: lightbulb.SlashContext) -> FA:
         try:
             cursor: mysql.connector.cursor.MySQLCursor = ctx.app.d.cursor
+
             query = """
                 SELECT
                     states,
@@ -536,13 +621,13 @@ class FA:
             initial_state = str(result[2])
             final_states_str = str(result[3])
             transitions_str = str(result[4])
-
             states = RegexPatterns.STATES.findall(states_str)
             alphabets = RegexPatterns.ALPHABETS.findall(alphabets_str)
             final_states = RegexPatterns.STATES.findall(final_states_str)
 
-            transitions: transitionT = {}
-            values =  transitions_str.split("|")
+            transitions: TransitionT = {}
+            values = transitions_str.split("|")
+
             for value in values:
                 match = RegexPatterns.TF.match(value.strip())
                 if match:
@@ -551,7 +636,6 @@ class FA:
                         transitions[(k0, k1)].add(v)
                     else:
                         transitions[(k0, k1)] = {v}
-
             fa = FA(
                 states=set(states),
                 alphabets=set(alphabets),
@@ -562,7 +646,8 @@ class FA:
             )
             return fa
         except Error as e:
-            raise error.AutomataError("Something went wrong while fetching the FA from the database.: " + e.args[1])
+            raise error.AutomataError(
+                "Something went wrong while fetching the FA from the database.: " + e.args[1])
 
     @staticmethod
     async def ask_or_get_fa(ctx: lightbulb.SlashContext) -> FA:

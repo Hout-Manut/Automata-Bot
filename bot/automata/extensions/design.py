@@ -22,6 +22,7 @@ async def design_cmd(ctx: lightbulb.SlashContext) -> None:
             hikari.ResponseType.DEFERRED_MESSAGE_CREATE
         )
 
+
     fa = await automata.FA.ask_or_get_fa(ctx)
 
     menu = automata.AutomataMenu(fa, ctx, timeout=600)
