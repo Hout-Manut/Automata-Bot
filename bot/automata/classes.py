@@ -19,6 +19,7 @@ from .extensions import error_handler as error
 
 
 TransitionT = dict[tuple[str, str], set[str]]
+_NormalizedT = tuple[set[str], set[str], str, set[str], TransitionT]
 
 
 class Color(int):
@@ -41,7 +42,7 @@ class RegexPatterns:
     ALPHABETS = re.compile(r"[\w']+")
     INITIAL_STATE = re.compile(r"\b[\w']+\b")
     FINAL_STATES = re.compile(r"\b[\w']+\b")
-    TF = re.compile(r"\b([\w']+)\s*[,\s]\s*([\w']+)\s*(=|>|->)\s*([\w']+)\b")
+    TF = re.compile(r"\b([\w']+)\s*[,\s]\s*([\w']*)\s*(=|>|->)\s*([\w']+)\b")
 
 
 class FA:
@@ -88,6 +89,7 @@ class FA:
         else:
             self.is_dfa = False
 
+
         self.states = states
         self.alphabets = alphabets
         self.initial_state = initial_state
@@ -133,10 +135,10 @@ class FA:
             WHERE user_id = %s AND fa_name = %s AND states = %s AND alphabets = %s
             AND initial_state = %s AND final_states = %s AND transitions = %s
             """
-            data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf)
+            data = (user_id, fa_name, states, alphabets,
+                    initial_state, final_states, tf)
             cursor.execute(check_query, data)
             result = cursor.fetchall()
-            print(result)
 
             if result:
                 # Records exist, delete them
@@ -146,7 +148,7 @@ class FA:
                 AND initial_state = %s AND final_states = %s AND transitions = %s
                 """
                 cursor.execute(delete_query, data)
-            
+
             # Record does not exist, insert new one
             insert_query = """
             INSERT INTO Recent (
@@ -162,7 +164,8 @@ class FA:
                 %s, %s, %s, %s, %s, %s, %s, %s
             )
             """
-            data_insert = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, date)
+            data_insert = (user_id, fa_name, states, alphabets,
+                           initial_state, final_states, tf, date)
             cursor.execute(insert_query, data_insert)
             ctx.app.d.db.commit()
 
@@ -281,7 +284,7 @@ class FA:
         while stack:
             current_state = stack.pop()
             if (current_state, '') in self.t_func:
-                for next_state in self.transition_function[(current_state, '')]:
+                for next_state in self.t_func[(current_state, '')]:
                     if next_state not in closure:
                         closure.add(next_state)
                         stack.append(next_state)
@@ -303,7 +306,7 @@ class FA:
 
         return new_states
 
-    def nfa_to_dfa(self) -> FA:
+    def nfa_to_dfa(self) -> tuple[FA, FAConversionResult]:
         initial_closure = self.epsilon_closure(self.initial_state)
         dfa_states = {frozenset(initial_closure): "q'0"}
         dfa_states_list = [initial_closure]
@@ -350,9 +353,12 @@ class FA:
             new_transition_functions,
             self.ctx,
         )
-        return new_fa
+        result = FAConversionResult(
+            dfa_states
+        )
+        return new_fa, result
 
-    async def convert(self) -> FA:
+    def convert(self) -> tuple[FA, FAConversionResult]:
         """
         Convert the NFA to a DFA.
 
@@ -367,7 +373,107 @@ class FA:
 
         return self.nfa_to_dfa()
 
-    def minimize(self) -> FA:
+    def get_unreachable_states(self) -> set[str]:
+        reachable_states: set[str] = set()
+        stack: list[str] = [self.initial_state]
+
+        while stack:
+            current_state = stack.pop()
+            if current_state not in reachable_states:
+                reachable_states.add(current_state)
+                for alphabet in self.alphabets:
+                    if (current_state, alphabet) in self.t_func:
+                        next_states = self.t_func[(current_state, alphabet)]
+                        for next_state in next_states:
+                            if next_state not in reachable_states:
+                                stack.append(next_state)
+
+        return self.states - reachable_states
+
+    def get_equivalent_states(
+        self,
+        reachable_states: set[str],
+        reachable_t_func: TransitionT,
+    ) -> list[set[str]]:
+        partitions = [self.final_states, reachable_states - self.final_states]
+        worklist = [self.final_states, reachable_states - self.final_states]
+
+        while worklist:
+            current = worklist.pop()
+            for symbol in self.alphabets:
+                state_transitions = set(
+                    state for state in self.states
+                    if (state, symbol) in reachable_t_func
+                    and reachable_t_func[(state, symbol)] & current
+                )
+            for partition in partitions[:]:
+                intersection = partition & state_transitions
+                difference = partition - state_transitions
+
+                if intersection and difference:
+                    partitions.remove(partition)
+                    partitions.extend([intersection, difference])
+                    if partition in worklist:
+                        worklist.remove(partition)
+                        worklist.extend([intersection, difference])
+                    else:
+                        worklist.append(intersection if len(
+                            intersection) <= len(difference) else difference)
+
+        return partitions
+
+    def get_minimized_dfa(self) -> tuple[FA, FAMinimizationResult]:
+        unreachable_states = self.get_unreachable_states()
+        reachable_states = self.states - unreachable_states
+
+        reachable_transition_functions = {
+            (state, symbol): next_states
+            for (state, symbol), next_states in self.t_func.items()
+            if state in reachable_states
+        }
+
+        partitions = self.get_equivalent_states(
+            reachable_states, reachable_transition_functions
+        )
+        old_states = list(self.states)
+        old_states.sort()
+        state_map = {frozenset(part): old_states[i]
+                     for i, part in enumerate(partitions)}
+
+        new_states = set(state_map[frozenset(part)] for part in partitions)
+        new_initial_state = state_map[next(
+            frozenset(part) for part in partitions if self.initial_state in part)]
+        new_final_states = set(state_map[frozenset(part)]
+                               for part in partitions if part & self.final_states)
+        new_transition_functions: TransitionT = {}
+
+        for part in partitions:
+            current = next(iter(part))
+            for symbol in self.alphabets:
+                if (current, symbol) in reachable_transition_functions:
+                    next_states = reachable_transition_functions[(
+                        current, symbol)]
+                    for next_state in next_states:
+                        new_part = next(frozenset(part)
+                                        for part in partitions if next_state in part)
+                        if (state_map[frozenset(part)], symbol) not in new_transition_functions:
+                            new_transition_functions[(
+                                state_map[frozenset(part)], symbol)] = set()
+                        new_transition_functions[(state_map[frozenset(part)], symbol)].add(
+                            state_map[new_part])
+
+        new_dfa = FA(
+            new_states,
+            self.alphabets,
+            new_initial_state,
+            new_final_states,
+            new_transition_functions,
+            self.ctx
+        )
+        result = FAMinimizationResult(unreachable_states)
+        return new_dfa, result
+
+    def minimize(self) -> tuple[FA, FAMinimizationResult]:
         """
         Minimize the DFA.
 
@@ -381,7 +487,19 @@ class FA:
         if self.is_nfa:
             raise error.InvalidFAError("The FA is not a DFA.")
 
-        raise NotImplementedError
+        minimized_dfa, result = self.get_minimized_dfa()
+
+        self._is_minimized = True
+        return minimized_dfa, result
+
+    @property
+    def is_minimizable(self) -> bool:
+        if self.is_nfa:
+            raise error.InvalidFAError("The FA is not a DFA.")
+
+        minimized_dfa, _ = self.get_minimized_dfa()
+        is_same = self._normalized() == minimized_dfa._normalized()
+        return not is_same
 
     def get_values(self) -> dict[str, str]:
         states = list(self.states)
@@ -464,7 +582,9 @@ class FA:
             str: The path to the diagram.
         """
         file_name = self.author_name
-        margin = "0" if ratio == "1" else "5,0"
+        if len(self.states) >= 4 and ratio == "1":
+            ratio = "0.5625"
+        # margin = "0" if ratio == "1" else "5,0"
         graph = graphviz.Digraph(
             format="png",
             graph_attr={
@@ -484,7 +604,9 @@ class FA:
         with graph.subgraph(name="cluster_0") as c:
             c.attr = {
                 "ratio": "1",
+                "size": "10,10",
                 "bgcolor": "#3a4348",
+                "center": "true",
             }
             c.node_attr.update(
                 color="#ffffff",
@@ -527,7 +649,7 @@ class FA:
                 return current_state in self.final_states
 
             if (current_state, "") in self.t_func:
-                next_states = self.transitions[(current_state, "")]
+                next_states = self.t_func[(current_state, "")]
                 for next_state in next_states:
                     accepted = dfs(next_state, remaining_str)
                     if accepted:
@@ -712,6 +834,33 @@ class FA:
     def __str__(self) -> str:
         return f"FA({self.states}, {self.alphabets}, {self.initial_state}, {self.final_states}, {self.transition_functions})"
 
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, FA):
+            return False
+
+        self_normalized = self._normalized()
+        other_normalized = other._normalized()
+        return self_normalized == other_normalized
+
+    def _normalized(self) -> _NormalizedT:
+        state_list = sorted(self.states)
+        state_map = {state: f's{i}' for i, state in enumerate(state_list)}
+
+        # Normalize transition functions
+        normalized_transitions = {}
+        for (state, symbol), next_states in self.transition_functions.items():
+            normalized_transitions[(state_map[state], symbol)] = {
+                state_map[next_state] for next_state in next_states}
+
+        # Normalize initial and final states
+        normalized_initial_state = state_map[self.initial_state]
+        normalized_final_states = {state_map[state]
+                                   for state in self.final_states}
+
+        # Return normalized DFA representation
+        return (set(state_map.values()), self.alphabets, normalized_initial_state, normalized_final_states, normalized_transitions)
+
+
 
 class FAStringResult:
     def __init__(
@@ -737,6 +886,64 @@ class FAStringResult:
     @property
     def is_accepted(self) -> bool:
         return self.passed
+
+
+class FAConversionResult:
+    def __init__(
+        self,
+        state_names: dict[frozenset[str], str],
+    ) -> None:
+        self.state_names = state_names
+
+    @property
+    def state_names_str(self) -> str:
+        string = ""
+        for states, name in self.state_names.items():
+            string += f"`{{{self.get_str_from_frozenset(states)}}}` -> `{name}`\n"
+        return string
+
+    def get_embed(self) -> hikari.Embed:
+        embed = hikari.Embed(
+            title="Automata Conversion",
+            color=Color.YELLOW
+        )
+        embed.add_field("State Closures", self.state_names_str)
+        return embed
+
+    @staticmethod
+    def get_str_from_frozenset(states: frozenset[str]) -> str:
+        buffer = []
+        for state in states:
+            state = "Trap State" if state == "" else state
+            buffer.append(f"`{state}`")
+        return ", ".join(buffer)
+
+
+class FAMinimizationResult:
+    def __init__(
+        self,
+        unreachable_states: set[str],
+    ) -> None:
+        self.unreachable_states = unreachable_states
+
+    @property
+    def unreachable_states_str(self) -> str:
+        buffer = []
+        for state in self.unreachable_states:
+            buffer.append(f"`{state}`")
+
+        if buffer == []:
+            return "No unreachable states."
+
+        return ", ".join(buffer)
+
+    def get_embed(self) -> hikari.Embed:
+        embed = hikari.Embed(
+            title="Automata Minimization",
+            color=Color.YELLOW
+        )
+        embed.add_field("Unreachable States", self.unreachable_states_str)
+        return embed
 
 
 class InputFAModal(miru.Modal):
@@ -821,15 +1028,28 @@ class InputFAModal(miru.Modal):
     def transitions_value(self) -> dict[tuple[str, str], set[str]]:
         transition_dict = {}
 
+        print("---------------------------------------------")
+        print("Input Transition Functions:")
+        print(self.transition_functions)
+        print("---------------------------------------------")
+
         values = self.transition_functions.split("\n")
         for value in values:
             match = RegexPatterns.TF.match(value.strip())
             if match:
                 k0, k1, _, v = match.groups()
+                print(f"Processing transition: {k0}, {k1}, {v}")
                 if (k0, k1) in transition_dict:
                     transition_dict[(k0, k1)].add(v)
+                    print(f"Adding to existing transition: {k0}, {k1}, {v}")
                 else:
                     transition_dict[(k0, k1)] = {v}
+                    print(f"Adding new transition: {k0}, {k1}, {v}")
+
+        print("---------------------------------------------")
+        print("Output Transition Dictionary:")
+        print(transition_dict)
+        print("---------------------------------------------")
 
         return transition_dict
 

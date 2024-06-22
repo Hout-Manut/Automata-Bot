@@ -34,17 +34,19 @@ class ConvertButton(menu.ScreenButton):
         )
 
     async def callback(self, ctx: miru.ViewContext) -> None:
-        new_fa = await self.screen.menu.fa.convert()
+        new_fa, result = self.screen.menu.fa.convert()
         self.menu.fa = new_fa
         self.menu.fa.save_to_db(self.menu.ctx)
-        self.screen.extra.disabled = True
-        await self.menu.update_message(await self.screen.build_content())
+        self.disabled = True
+        # self.screen.change_button()
+        await self.menu.update_message(await self.screen.build_content(result.get_embed()))
 
 
 class MinimizeButton(menu.ScreenButton):
 
     def __init__(
         self,
+        fa: classes.FA | None = None,
         label: str = "Minimize DFA",
         *,
         emoji: hikari.Emoji | str | None = None,
@@ -55,6 +57,8 @@ class MinimizeButton(menu.ScreenButton):
         position: int | None = None,
         autodefer: bool | miru.AutodeferOptions | hikari.UndefinedType = hikari.UNDEFINED
     ) -> None:
+        if fa:
+            disabled = not fa.is_minimizable
         super().__init__(
             label,
             emoji=emoji,
@@ -67,12 +71,12 @@ class MinimizeButton(menu.ScreenButton):
         )
 
     async def callback(self, ctx: miru.ViewContext) -> None:
-        await ctx.respond("Not implemented", flags=hikari.MessageFlag.EPHEMERAL)
-        return
-        new_fa = self.menu.fa.minimize()
+        # await ctx.respond("Not implemented", flags=hikari.MessageFlag.EPHEMERAL)
+        # return
+        new_fa, result = self.menu.fa.minimize()
         self.disabled = True
         self.menu.fa = new_fa
-        await self.menu.update_message(await self.screen.build_content())
+        await self.menu.update_message(await self.screen.build_content(result.get_embed()))
 
 
 class SaveButton(miru.Button):

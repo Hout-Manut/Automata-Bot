@@ -101,8 +101,16 @@ class MainScreen(miru_menu.Screen):
         menu: AutomataMenu,
     ) -> None:
         super().__init__(menu)
+
+        self.conversion_result = None
+
+        if self.menu.ctx.invoked.name == "nfa_to_dfa":
+            new_fa, result = self.menu.fa.convert()
+            self.conversion_result = result
+            # self.menu.fa = new_fa
+
         if self.menu.fa.is_dfa:
-            self.extra = MinimizeButton()
+            self.extra = MinimizeButton(self.menu.fa)
         else:
             self.extra = ConvertButton()
 
@@ -112,8 +120,16 @@ class MainScreen(miru_menu.Screen):
     def menu(self) -> AutomataMenu:
         return super().menu
 
-    async def build_content(self) -> miru_menu.ScreenContent:
+    def change_button(self) -> None:
+        self.remove_item(self.extra)
+        self.extra = MinimizeButton(self.menu.fa)
+        self.add_item(self.extra)
+
+    async def build_content(self, extra_embeds: hikari.Embed | None = None) -> miru_menu.ScreenContent:
         embeds = [self.menu.fa.get_embed()]
+        if extra_embeds:
+            embeds.append(extra_embeds)
+
         if self.menu.ctx.invoked.name == "fa":
             result = "Deterministic" if self.menu.fa.is_dfa else "Non-Deterministic"
             embed = hikari.Embed(
@@ -124,13 +140,17 @@ class MainScreen(miru_menu.Screen):
                 f"**{result}**"
             )
             embeds.append(embed)
+        elif self.menu.ctx.invoked.name == "nfa_to_dfa":
+            if self.conversion_result:
+                embeds.append(self.conversion_result.get_embed())
+
         return miru_menu.ScreenContent(
             embeds=embeds
         )
 
     @miru_menu.button(label="Edit", style=hikari.ButtonStyle.SECONDARY, row=1)
     async def edit_fa_callback(self, ctx: miru.ViewContext, btn: miru_menu.ScreenButton) -> None:
-        modal = EditFAModal(self.fa)
+        modal = EditFAModal(self.menu.fa)
         await ctx.respond_with_modal(modal)
         await modal.wait()
         if not modal.ctx:
