@@ -54,3 +54,10 @@ Date: 2024-06-21 - Manut
 + Minor Changes
 - Finalized the diagram color scheme (maybe)
 - Made the DB work with "'" as state names.
+
+Date: 2024-06-22 - Hao
++ Main Changes:
+- None
+
++ Minor Changes:
+- Overwrite the existing duplicated data into a new one.

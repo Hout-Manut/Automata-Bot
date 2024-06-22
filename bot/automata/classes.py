@@ -127,7 +127,28 @@ class FA:
         try:
             cursor: mysql.connector.cursor.MySQLCursor = ctx.app.d.cursor
 
-            sql_query = """
+            # Check if the record already exists
+            check_query = """
+            SELECT id FROM Recent
+            WHERE user_id = %s AND fa_name = %s AND states = %s AND alphabets = %s
+            AND initial_state = %s AND final_states = %s AND transitions = %s
+            """
+            data = (user_id, fa_name, states, alphabets, initial_state, final_states, tf)
+            cursor.execute(check_query, data)
+            result = cursor.fetchall()
+            print(result)
+
+            if result:
+                # Records exist, delete them
+                delete_query = """
+                DELETE FROM Recent
+                WHERE user_id = %s AND fa_name = %s AND states = %s AND alphabets = %s
+                AND initial_state = %s AND final_states = %s AND transitions = %s
+                """
+                cursor.execute(delete_query, data)
+            
+            # Record does not exist, insert new one
+            insert_query = """
             INSERT INTO Recent (
                 user_id,
                 fa_name,
@@ -141,12 +162,8 @@ class FA:
                 %s, %s, %s, %s, %s, %s, %s, %s
             )
             """
-            # sql_query = 'SELECT * FROM History;'
-
-            data = (user_id, fa_name, states, alphabets,
-                    initial_state, final_states, tf, date)
-            cursor.execute(sql_query, data)
-
+            data_insert = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, date)
+            cursor.execute(insert_query, data_insert)
             ctx.app.d.db.commit()
 
             # for row in cursor:
