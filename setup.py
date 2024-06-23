@@ -22,14 +22,13 @@ if __name__ == "__main__":
         exit()
 
     if db_con.is_connected():
-        print("Database connection established. Setting up...")
+        print("Database connection established.")
 
         cursor = db_con.cursor()
         cursor.execute("SHOW DATABASES")
 
         if "automata" in [x[0] for x in cursor]:
-            print("Automata database already exists. Do you want to overwrite it? (y/n)")
-            opt = input()
+            opt = input("Automata database already exists. Do you want to overwrite it? (y/n): ")
             if "y" in opt:
                 cursor.execute("DROP DATABASE Automata")
             else:

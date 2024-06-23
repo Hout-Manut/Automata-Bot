@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from datetime import timedelta
 
 import hikari
@@ -9,19 +8,15 @@ import miru
 from miru.abc.item import InteractiveViewItem
 from miru.ext import menu as miru_menu
 
-from .classes import (
-    FA,
-    InputStringModal,
-    EditFAModal,
-    Color,
-    ActionOptions,
-    RegexPatterns,
-    FAStringResult
-)
 from .extensions.error_handler import InvalidDBQuery, NotMinimizeable
-from .buttons import (
-    ConvertButton,
-    MinimizeButton,
+from .buttons import ConvertButton, MinimizeButton
+from .classes import (
+    Color,
+    EditFAModal,
+    FA,
+    FAStringResult,
+    InputStringModal,
+    RegexPatterns,
 )
 
 
@@ -33,11 +28,10 @@ class AutomataMenu(miru_menu.Menu):
         ctx: lightbulb.SlashContext,
         *,
         timeout: float | int | timedelta | None = 300,
-        autodefer: bool | miru.AutodeferOptions = True,
     ) -> None:
         self._fa = fa
         self.ctx = ctx
-        super().__init__(timeout=timeout, autodefer=autodefer)
+        super().__init__(timeout=timeout)
 
     @property
     def fa(self) -> FA:
@@ -46,15 +40,6 @@ class AutomataMenu(miru_menu.Menu):
     @fa.setter
     def fa(self, value: FA) -> None:
         self._fa = value
-
-    # async def build_response_async(
-    #     self,
-    #     client: miru.Client,
-    #     starting_screen: miru_menu.Screen,
-    #     *,
-    #     ephemeral: bool = False
-    # ) -> miru.MessageBuilder:
-    #     return await super().build_response_async(client, starting_screen, ephemeral=ephemeral)
 
     async def on_timeout(self) -> None:
         self.clear_items()

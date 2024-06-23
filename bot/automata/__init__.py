@@ -2,10 +2,10 @@ import os
 
 from dotenv import load_dotenv
 
+# Must load enviroments variables before other imports.
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-# BOT_ID = int(os.getenv("BOT_ID"))
 DEFAULT_GUILDS = os.getenv("GUILDS")
 if DEFAULT_GUILDS is not None:
     DEFAULT_GUILDS = [int(x) for x in DEFAULT_GUILDS.split(',')]
@@ -25,16 +25,20 @@ DB_PORT = os.getenv("DB_PORT") or "3306"
 
 from .bot import run
 from .classes import (
-    FA,
-    InputStringModal,
-    InputFAModal,
     EditFAModal,
+    FA,
+    InputFAModal,
+    InputStringModal,
 )
-from .screen import AutomataMenu, MainScreen, TestStringScreen
 from .extensions.error_handler import (
     AutomataError,
-    UserError,
     InvalidFAError,
+    UserError,
+)
+from .screen import (
+    AutomataMenu, 
+    MainScreen, 
+    TestStringScreen,
 )
 
-__version__ = "0.1"
+__version__ = "0.9"

@@ -9,35 +9,46 @@ import lightbulb
 import miru
 import mysql.connector
 import mysql.connector.cursor
-from mysql.connector import Error
+from mysql.connector import SQLError
 
 from .extensions import error_handler as error
 
 
 TransitionT = dict[tuple[str, str], set[str]]
+"""
+Type alias that represents the transition function type.
+"""
 
 
 class Color(int):
-    RED = 0xff6459
-    GREEN = 0xa2e57b
-    LIGHT_BLUE = 0x55c7f1
-    YELLOW = 0xf2ee78
+    """A class to store default colors."""
 
-
-class ActionOptions(int):
-    DESIGN = 0
-    TEST_FA = 1
-    TEST_STRING = 2
-    CONVERT_TO_DFA = 3
-    MINIMIZE_DFA = 4
+    RED = 0xFF6459
+    GREEN = 0xA2E57B
+    LIGHT_BLUE = 0x55C7F1
+    YELLOW = 0xF2EE78
 
 
 class RegexPatterns:
+    """A class that contains regex patterns to use for parsing user inputs"""
+
     STATES = re.compile(r"\b[\w']+\b")
+    """Matches words (`a-zA-z0-9_'`)"""
+
     ALPHABETS = re.compile(r"[\w']+")
+    """Matches single letters (`a-zA-z0-9_'`)"""
+
     INITIAL_STATE = re.compile(r"\b[\w']+\b")
+    """Matches word (`a-zA-z0-9_'`)"""
+
     FINAL_STATES = re.compile(r"\b[\w']+\b")
+    """Matches words (`a-zA-z0-9_'`)"""
+
     TF = re.compile(r"\b([\w']+)\s*[,\s]\s*([\w']*)\s*(=|>|->)\s*([\w']+)\b")
+    """
+    Matches word, followed by `,` or `space`, a word or nothing, 
+    then any of these [`=`, `>`, `->`] and another word.
+    """
 
 
 class FA:
@@ -93,10 +104,17 @@ class FA:
         self._is_minimized = False
 
     def save_to_db(self, ctx: lightbulb.SlashContext | None = None) -> None:
+        """
+        Saves this FA object to the database. Only updates the date if this already exists in the database.
+        
+        Args:
+            ctx (Context): the context of an interaction to get the user id.
+        """
         if not ctx:
             ctx = self.ctx
 
         template = "{fa} with {num_states} states, {num_alphabets} inputs. Starts at {initial_state}."
+        """Default FA name to be saved."""
 
         values = self.get_values()
 
@@ -105,13 +123,13 @@ class FA:
         alphabets = values["alphabets"]
         initial_state = values["initial_state"]
         final_states = values["final_states"]
-        tf = values["tf"]
+        tf = values["tf"]  # Transition functions
 
         fa_type = "An NFA" if self.is_nfa else "A DFA"
         num_states = len(self.states)
         num_alphabets = len(self.alphabets)
 
-        date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         fa_name = template.format(
             fa=fa_type,
@@ -132,17 +150,15 @@ class FA:
                 states = %s AND
                 alphabets = %s AND
                 initial_state = %s AND
-                final_states = %s
-                AND transitions = %s
+                final_states = %s AND 
+                transitions = %s
             """
-            data = (
-                user_id, states, alphabets,
-                initial_state, final_states, tf)
+            data = (user_id, states, alphabets, initial_state, final_states, tf)
             cursor.execute(check_query, data)
             result = cursor.fetchall()
 
             if result:
-                # Records exist, update them all
+                # Records exist, update them all*
                 update_query = """
                 UPDATE Recent
                 SET
@@ -160,8 +176,20 @@ class FA:
                     final_states = %s AND
                     transitions = %s
                 """
-                data_update = (states, alphabets, initial_state, final_states, tf, date,
-                               user_id, states, alphabets, initial_state, final_states, tf)
+                data_update = (
+                    states,
+                    alphabets,
+                    initial_state,
+                    final_states,
+                    tf,
+                    date,
+                    user_id,
+                    states,
+                    alphabets,
+                    initial_state,
+                    final_states,
+                    tf,
+                )
                 cursor.execute(update_query, data_update)
             else:
                 # Record does not exist, insert new one
@@ -179,16 +207,21 @@ class FA:
                     %s, %s, %s, %s, %s, %s, %s, %s
                 )
                 """
-                data_insert = (user_id, fa_name, states, alphabets,
-                               initial_state, final_states, tf, date)
+                data_insert = (
+                    user_id,
+                    fa_name,
+                    states,
+                    alphabets,
+                    initial_state,
+                    final_states,
+                    tf,
+                    date,
+                )
                 cursor.execute(insert_query, data_insert)
             ctx.app.d.db.commit()
 
-            # for row in cursor:
-            #     print(row)
-
-        except Error as e:
-            print(f'Inserting data unsucessfully: {e}')
+        except SQLError as e:
+            print(f"Inserting data unsucessfully: {e}")
 
     @property
     def is_nfa(self) -> bool:
@@ -249,10 +282,7 @@ class FA:
         """
         tf = ""
         sorted_dict = dict(
-            sorted(
-                self.t_func.items(),
-                key=lambda item: (item[0][0], item[0][1])
-            )
+            sorted(self.t_func.items(), key=lambda item: (item[0][0], item[0][1]))
         )
         if self.is_dfa:
             for (from_state, symbol), to_state in sorted_dict.items():
@@ -261,7 +291,9 @@ class FA:
         else:
             for (from_state, symbol), to_states in sorted_dict.items():
                 symbol = "ε" if symbol == "" else symbol
-                tf += f"(`{from_state}`, `{symbol}`) -> {{`{'`, `'.join(to_states)}`}}\n"
+                tf += (
+                    f"(`{from_state}`, `{symbol}`) -> {{`{'`, `'.join(to_states)}`}}\n"
+                )
         return tf
 
     @property
@@ -298,8 +330,8 @@ class FA:
 
         while stack:
             current_state = stack.pop()
-            if (current_state, '') in self.t_func:
-                for next_state in self.t_func[(current_state, '')]:
+            if (current_state, "") in self.t_func:
+                for next_state in self.t_func[(current_state, "")]:
                     if next_state not in closure:
                         closure.add(next_state)
                         stack.append(next_state)
@@ -314,6 +346,7 @@ class FA:
         return closure
 
     def move(self, states: set[str], symbol: str) -> set[str]:
+        """Gets a state return all next states it can moves to."""
         new_states = set()
         for state in states:
             if (state, symbol) in self.t_func:
@@ -322,6 +355,13 @@ class FA:
         return new_states
 
     def nfa_to_dfa(self) -> tuple[FA, FAConversionResult]:
+        """
+        Generate a DFA from an NfA.
+        
+        Returns:
+            FA: the new DFA.
+            FAConversionResult: A result object that contains informations of the conversion.
+        """
         initial_closure = self.epsilon_closure(self.initial_state)
         dfa_states = {frozenset(initial_closure): "q'0"}
         dfa_states_list = [initial_closure]
@@ -346,9 +386,9 @@ class FA:
                     unmarked_states.append(next_closure)
                     state_counter += 1
 
-                dfa_transition_functions[
-                    (current_state_name, symbol)
-                ] = {dfa_states[frozenset(next_closure)]}
+                dfa_transition_functions[(current_state_name, symbol)] = {
+                    dfa_states[frozenset(next_closure)]
+                }
             if any(state in self.final_states for state in current_state):
                 dfa_final_states.add(current_state_name)
 
@@ -357,8 +397,8 @@ class FA:
         new_initial_state = dfa_states[frozenset(initial_closure)]
         new_final_states = dfa_final_states
         new_transition_functions = {
-            (current, symbol): to for
-            (current, symbol), to in dfa_transition_functions.items()
+            (current, symbol): to
+            for (current, symbol), to in dfa_transition_functions.items()
         }
         new_fa = FA(
             new_state_set,
@@ -368,9 +408,7 @@ class FA:
             new_transition_functions,
             self.ctx,
         )
-        result = FAConversionResult(
-            dfa_states
-        )
+        result = FAConversionResult(dfa_states)
         return new_fa, result
 
     def convert(self) -> tuple[FA, FAConversionResult]:
@@ -417,7 +455,8 @@ class FA:
             current = worklist.pop()
             for symbol in self.alphabets:
                 state_transitions = set(
-                    state for state in self.states
+                    state
+                    for state in self.states
                     if (state, symbol) in reachable_t_func
                     and reachable_t_func[(state, symbol)] & current
                 )
@@ -432,8 +471,11 @@ class FA:
                         worklist.remove(partition)
                         worklist.extend([intersection, difference])
                     else:
-                        worklist.append(intersection if len(
-                            intersection) <= len(difference) else difference)
+                        worklist.append(
+                            intersection
+                            if len(intersection) <= len(difference)
+                            else difference
+                        )
 
         return partitions
 
@@ -452,30 +494,40 @@ class FA:
         )
         old_states = list(self.states)
         old_states.sort()
-        state_map = {frozenset(part): old_states[i]
-                     for i, part in enumerate(partitions)}
+        state_map = {
+            frozenset(part): old_states[i] for i, part in enumerate(partitions)
+        }
 
         new_states = set(state_map[frozenset(part)] for part in partitions)
-        new_initial_state = state_map[next(
-            frozenset(part) for part in partitions if self.initial_state in part)]
-        new_final_states = set(state_map[frozenset(part)]
-                               for part in partitions if part & self.final_states)
+        new_initial_state = state_map[
+            next(frozenset(part) for part in partitions if self.initial_state in part)
+        ]
+        new_final_states = set(
+            state_map[frozenset(part)]
+            for part in partitions
+            if part & self.final_states
+        )
         new_transition_functions: TransitionT = {}
 
         for part in partitions:
             current = next(iter(part))
             for symbol in self.alphabets:
                 if (current, symbol) in reachable_transition_functions:
-                    next_states = reachable_transition_functions[(
-                        current, symbol)]
+                    next_states = reachable_transition_functions[(current, symbol)]
                     for next_state in next_states:
-                        new_part = next(frozenset(part)
-                                        for part in partitions if next_state in part)
-                        if (state_map[frozenset(part)], symbol) not in new_transition_functions:
-                            new_transition_functions[(
-                                state_map[frozenset(part)], symbol)] = set()
-                        new_transition_functions[(state_map[frozenset(part)], symbol)].add(
-                            state_map[new_part])
+                        new_part = next(
+                            frozenset(part) for part in partitions if next_state in part
+                        )
+                        if (
+                            state_map[frozenset(part)],
+                            symbol,
+                        ) not in new_transition_functions:
+                            new_transition_functions[
+                                (state_map[frozenset(part)], symbol)
+                            ] = set()
+                        new_transition_functions[
+                            (state_map[frozenset(part)], symbol)
+                        ].add(state_map[new_part])
 
         new_dfa = FA(
             new_states,
@@ -483,7 +535,7 @@ class FA:
             new_initial_state,
             new_final_states,
             new_transition_functions,
-            self.ctx
+            self.ctx,
         )
         lost_states = self.states - new_dfa.states
         result = FAMinimizationResult(lost_states)
@@ -510,6 +562,7 @@ class FA:
 
     @property
     def is_minimizable(self) -> bool:
+        """Checks if this fa is minimizable"""
         if self.is_nfa:
             raise error.InvalidFAError("The FA is not a DFA.")
 
@@ -519,6 +572,10 @@ class FA:
         return not is_same
 
     def get_values(self) -> dict[str, str]:
+        """
+        Converts all of the FA data into a string representation.
+        Mainly used to store into the database.
+        """
         states = list(self.states)
         states.sort()
         states_str = " ".join(states)
@@ -554,14 +611,15 @@ class FA:
         author_icon: hikari.Resourceish | None = None,
         with_diagram: bool = True,
     ) -> hikari.Embed:
+        """
+        Generate an embed with the information of the FA.
+        
+        Embeds are those cool Discord message blocks that you can add accent colors to.
+        """
 
         title = "Deterministic" if self.is_dfa else "Non-deterministic"
         title += " Finite Automation"
-        embed = hikari.Embed(
-            title=title,
-            description=None,
-            color=color
-        )
+        embed = hikari.Embed(title=title, description=None, color=color)
 
         name = "State" if len(self.states) == 1 else "States"
         embed.add_field(name, self.states_str)
@@ -588,6 +646,9 @@ class FA:
     def get_diagram(self, ratio: str = "1") -> hikari.File:
         """
         Get the diagram for the FA.
+        
+        Args:
+            ratio (str): How wide the diagram image will be.
 
         Returns:
             hikari.File: The diagram for the FA.
@@ -598,6 +659,9 @@ class FA:
     def draw_diagram(self, ratio: str = "1") -> str:
         """
         Draw the FA as a diagram.
+
+        Args:
+            ratio (str): How wide the diagram image will be.
 
         Returns:
             str: The path to the diagram.
@@ -630,15 +694,9 @@ class FA:
                 "center": "true",
             }
             c.node_attr.update(
-                color="#ffffff",
-                fillcolor="transparent",
-                fontcolor="#ffffff"
+                color="#ffffff", fillcolor="transparent", fontcolor="#ffffff"
             )
-            c.edge_attr.update(
-                color="#ffffff",
-                fontcolor="#ffffff",
-                len="1"
-            )
+            c.edge_attr.update(color="#ffffff", fontcolor="#ffffff", len="1")
             for state in self.states:
                 if state in self.final_states:
                     c.node(state, shape="doublecircle")
@@ -662,11 +720,16 @@ class FA:
             string (str): The string to check.
 
         Returns:
-            bool: True if the string is accepted, else False.
+            FAStringResult: A result object that contains the informations of the test.
         """
 
         def dfs(current_state: str, remaining_str: str) -> bool:
-            # Base case: if no more symbols are left in the input string
+            """
+            Search through the string with a depth-first search algorithm.
+            
+            Returns:
+                bool: True if any of the end of the search branches lands on a final state.
+            """
             if not remaining_str:
                 # Check if the current state is a final state or if any epsilon transitions lead to a final state
                 if current_state in self.final_states:
@@ -825,6 +888,7 @@ class FA:
         except error.InvalidDBQuery:
             raise
 
+
     @staticmethod
     def get_fa_from_db(fa_id: int, ctx: lightbulb.SlashContext) -> FA:
         try:
@@ -862,9 +926,11 @@ class FA:
                 transitions_str=transitions_str,
                 ctx=ctx,
             )
-        except Error as e:
+        except SQLError as e:
             raise error.AutomataError(
-                "Something went wrong while fetching the FA from the database.: " + e.args[1])
+                "Something went wrong while fetching the FA from the database.: "
+                + e.args[1]
+            )
 
     @staticmethod
     def parse_db_data(
@@ -957,21 +1023,27 @@ class FA:
 
     def _normalized(self) -> tuple:
         state_list = sorted(self.states)
-        state_map = {state: f's{i}' for i, state in enumerate(state_list)}
+        state_map = {state: f"s{i}" for i, state in enumerate(state_list)}
 
         # Normalize transition functions
         normalized_transitions = {}
         for (state, symbol), next_states in self.transition_functions.items():
             normalized_transitions[(state_map[state], symbol)] = {
-                state_map[next_state] for next_state in next_states}
+                state_map[next_state] for next_state in next_states
+            }
 
         # Normalize initial and final states
         normalized_initial_state = state_map[self.initial_state]
-        normalized_final_states = {state_map[state]
-                                   for state in self.final_states}
+        normalized_final_states = {state_map[state] for state in self.final_states}
 
         # Return normalized DFA representation
-        return (set(state_map.values()), self.alphabets, normalized_initial_state, normalized_final_states, normalized_transitions)
+        return (
+            set(state_map.values()),
+            self.alphabets,
+            normalized_initial_state,
+            normalized_final_states,
+            normalized_transitions,
+        )
 
 
 class FAStringResult:
@@ -980,12 +1052,10 @@ class FAStringResult:
         fa: FA | None = None,
         string: str | None = None,
         passed: bool = False,
-        # last_state: str | None = None,
     ) -> None:
         self._string = string
         self.fa = fa
         self.passed = passed
-        # self.last_state = last_states
 
     @property
     def string(self) -> str:
@@ -1015,10 +1085,7 @@ class FAConversionResult:
         return string
 
     def get_embed(self) -> hikari.Embed:
-        embed = hikari.Embed(
-            title="Automata Conversion",
-            color=Color.YELLOW
-        )
+        embed = hikari.Embed(title="Automata Conversion", color=Color.YELLOW)
         embed.add_field("State Closures", self.state_names_str)
         return embed
 
@@ -1050,12 +1117,8 @@ class FAMinimizationResult:
         return ", ".join(buffer)
 
     def get_embed(self) -> hikari.Embed:
-        embed = hikari.Embed(
-            title="Automata Minimization",
-            color=Color.YELLOW
-        )
-        embed.add_field("Unreachable States",
-                        f"{{{self.unreachable_states_str}}}")
+        embed = hikari.Embed(title="Automata Minimization", color=Color.YELLOW)
+        embed.add_field("Unreachable States", f"{{{self.unreachable_states_str}}}")
         return embed
 
 

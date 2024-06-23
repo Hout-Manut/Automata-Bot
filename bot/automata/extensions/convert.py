@@ -28,7 +28,6 @@ async def nfa_dfa_cmd(ctx: lightbulb.SlashContext) -> None:
 
     fa = await automata.FA.ask_or_get_fa(ctx)
 
-    # modal.fa.save_to_db(ctx)
     menu = automata.AutomataMenu(fa, ctx, timeout=600)
     builder = await menu.build_response_async(
         ctx.app.d.miru,

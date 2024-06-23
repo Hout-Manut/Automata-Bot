@@ -37,11 +37,10 @@ try:
     if db.is_connected():
         bot.d.db = db
         bot.d.cursor = db.cursor()
-        print("Database connection established.")
     else:
         raise SQLError
 
-except SQLError as e:
+except SQLError:
     print("Database connection failed. Please check your environment variables.")
     exit()
 

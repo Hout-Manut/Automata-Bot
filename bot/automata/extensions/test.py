@@ -1,6 +1,3 @@
-import asyncio
-import re
-
 import hikari
 import hikari.commands
 import lightbulb
@@ -32,6 +29,7 @@ async def test_fa_cmd(ctx: lightbulb.SlashContext) -> None:
     message = await builder.create_followup(ctx.interaction)
 
     ctx.app.d.miru.start_view(menu, bind_to=message)
+
 
 @test_cmd.child
 @lightbulb.option(

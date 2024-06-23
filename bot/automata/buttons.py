@@ -1,7 +1,4 @@
-from typing import Callable
-
 import hikari
-import lightbulb
 import miru
 from miru.ext import menu
 
@@ -38,7 +35,6 @@ class ConvertButton(menu.ScreenButton):
         self.menu.fa = new_fa
         self.menu.fa.save_to_db(self.menu.ctx)
         self.disabled = True
-        # self.screen.change_button()
         await self.menu.update_message(await self.screen.build_content(result.get_embed()))
 
 
@@ -71,115 +67,7 @@ class MinimizeButton(menu.ScreenButton):
         )
 
     async def callback(self, ctx: miru.ViewContext) -> None:
-        # await ctx.respond("Not implemented", flags=hikari.MessageFlag.EPHEMERAL)
-        # return
         new_fa, result = self.menu.fa.minimize()
         self.disabled = True
         self.menu.fa = new_fa
         await self.menu.update_message(await self.screen.build_content(result.get_embed()))
-
-
-class SaveButton(miru.Button):
-
-    def __init__(
-        self,
-        saveable: bool | None = None,
-        label: str = "Save",
-        *,
-        emoji: hikari.Emoji | str | None = None,
-        style: hikari.InteractiveButtonTypesT = hikari.ButtonStyle.SECONDARY,
-        disabled: bool | None = None,
-        custom_id: str | None = None,
-        row: int = 1,
-        position: int | None = None,
-        autodefer: (
-            bool | miru.AutodeferOptions | hikari.UndefinedType
-        ) = hikari.UNDEFINED,
-    ) -> None:
-        disabled = (
-            (True if self.view.inter.history != "" else False)
-            if saveable is None
-            else not saveable
-        )
-
-        super().__init__(
-            label,
-            emoji=emoji,
-            style=style,
-            disabled=disabled,
-            custom_id=custom_id,
-            row=row,
-            position=position,
-            autodefer=autodefer,
-        )
-
-    def callback(self, context: miru.ViewContext) -> None:
-        raise NotImplementedError
-
-
-class EditButton(miru.Button):
-
-    def __init__(
-        self,
-        editable: bool = True,
-        label: str = "Edit",
-        *,
-        emoji: hikari.Emoji | str | None = None,
-        style: hikari.InteractiveButtonTypesT = hikari.ButtonStyle.SECONDARY,
-        disabled: bool | None = None,
-        custom_id: str | None = None,
-        row: int = 1,
-        position: int | None = None,
-        autodefer: (
-            bool | miru.AutodeferOptions | hikari.UndefinedType
-        ) = hikari.UNDEFINED,
-    ) -> None:
-        disabled = not editable if disabled is None else disabled
-
-        super().__init__(
-            label,
-            emoji=emoji,
-            style=style,
-            disabled=disabled,
-            custom_id=custom_id,
-            row=row,
-            position=position,
-            autodefer=autodefer,
-        )
-
-    def callback(self, context: miru.ViewContext) -> None:
-        raise NotImplementedError
-
-
-class ExitButton(miru.Button):
-
-    def __init__(
-        self,
-        exitable: bool = True,
-        label: str = "Edit",
-        *,
-        emoji: hikari.Emoji | str | None = None,
-        style: hikari.InteractiveButtonTypesT = hikari.ButtonStyle.DANGER,
-        disabled: bool | None = None,
-        custom_id: str | None = None,
-        row: int = 1,
-        position: int | None = None,
-        autodefer: (
-            bool | miru.AutodeferOptions | hikari.UndefinedType
-        ) = hikari.UNDEFINED,
-    ) -> None:
-        disabled = not exitable if disabled is None else disabled
-
-        super().__init__(
-            label,
-            emoji=emoji,
-            style=style,
-            disabled=disabled,
-            custom_id=custom_id,
-            row=row,
-            position=position,
-            autodefer=autodefer,
-        )
-
-    def callback(self, context: miru.ViewContext) -> None:
-        raise NotImplementedError
