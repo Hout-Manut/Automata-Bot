@@ -34,6 +34,17 @@ class InvalidDFAError(InvalidFAError):
     """
 
 
+class NotMinimizeable(InvalidFAError):
+    """
+    Raised when the provided FA is not minimizable.
+    """
+
+class InvalidDBQuery(UserError):
+    """
+    Raised when the provided query is invalid.
+    """
+
+
 @error.listener(lightbulb.CommandErrorEvent)
 async def error_handler(event: lightbulb.CommandErrorEvent) -> None:
     if isinstance(event.exception.__cause__, UserError):
@@ -41,7 +52,7 @@ async def error_handler(event: lightbulb.CommandErrorEvent) -> None:
         await event.context.respond(
             hikari.Embed(
                 title=type(
-                    error).__name__, description=error.args[0], color=0xCC0000
+                    error).__name__, description=error.args, color=0xCC0000
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
         )

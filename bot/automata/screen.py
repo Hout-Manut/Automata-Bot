@@ -18,7 +18,7 @@ from .classes import (
     RegexPatterns,
     FAStringResult
 )
-
+from .extensions.error_handler import InvalidDBQuery, NotMinimizeable
 from .buttons import (
     ConvertButton,
     MinimizeButton,
@@ -67,11 +67,20 @@ class AutomataMenu(miru_menu.Menu):
         context: miru.ViewContext | None = None
     ) -> None:
         if context:
-            await context.respond(
-                "Something went wrong, please try again later.",
-                flags=hikari.MessageFlag.EPHEMERAL
-            )
-            raise error
+            if isinstance(error, NotMinimizeable):
+                await context.respond(
+                    "Something went wrong, please try again later.",
+                    flags=hikari.MessageFlag.EPHEMERAL
+                )
+                return
+            elif isinstance(error, InvalidDBQuery):
+                error_embed = hikari.Embed(
+                    title="Error",
+                    description="Invalid FA id provided.",
+                    color=Color.RED
+                )
+                await context.respond(error_embed, flags=hikari.MessageFlag.EPHEMERAL)
+                return
         for item in self.children:
             item.disabled = True
         await self.update_message()
@@ -103,17 +112,26 @@ class MainScreen(miru_menu.Screen):
         super().__init__(menu)
 
         self.conversion_result = None
+        self.minimization_result = None
 
         if self.menu.ctx.invoked.name == "nfa_to_dfa":
-            new_fa, result = self.menu.fa.convert()
-            self.conversion_result = result
-            # self.menu.fa = new_fa
+            if self.menu.fa.is_nfa:
+                new_fa, result = self.menu.fa.convert()
+                self.conversion_result = result
+                self.menu.fa = new_fa
+
+        if self.menu.ctx.invoked.name == "dfa":
+            if self.menu.fa.is_dfa:
+                self.minimizeable = self.menu.fa.is_minimizable
+                if self.minimizeable:
+                    new_fa, result = self.menu.fa.minimize()
+                    self.minimization_result = result
+                    self.menu.fa = new_fa
 
         if self.menu.fa.is_dfa:
             self.extra = MinimizeButton(self.menu.fa)
         else:
             self.extra = ConvertButton()
-
         self.add_item(self.extra)
 
     @property
@@ -140,8 +158,33 @@ class MainScreen(miru_menu.Screen):
                 f"**{result}**"
             )
             embeds.append(embed)
+        elif self.menu.ctx.invoked.name == "dfa":
+            if self.menu.fa.is_nfa:
+                embed = hikari.Embed(
+                    title="Automata Minimization",
+                    description="Can't minimize a non-deterministic automata.",
+                    color=Color.RED
+                )
+                embeds.append(embed)
+            elif self.minimization_result:
+                embeds.append(self.minimization_result.get_embed())
+            else:
+                embed = hikari.Embed(
+                    title="Automata Minimization",
+                    description="This DFA is not minimizable.",
+                    color=Color.RED
+                )
+                embeds.append(embed)
+
         elif self.menu.ctx.invoked.name == "nfa_to_dfa":
-            if self.conversion_result:
+            if self.menu.fa.is_dfa:
+                embed = hikari.Embed(
+                    title="Automata Conversion",
+                    description="Cannot convert an already deterministic automata.",
+                    color=Color.RED
+                )
+                embeds.append(embed)
+            elif self.conversion_result:
                 embeds.append(self.conversion_result.get_embed())
 
         return miru_menu.ScreenContent(

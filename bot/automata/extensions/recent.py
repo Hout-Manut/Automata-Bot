@@ -1,31 +1,169 @@
+import asyncio
+from datetime import datetime, timedelta
+
 import hikari
 import hikari.commands
 import lightbulb
+import miru
+from mysql.connector.cursor import MySQLCursor
+from mysql.connector import Error as SQLError
 
+import bot.automata as automata
 from ._history_autocomplete import history_autocomplete
 
 recent_plugin = lightbulb.Plugin('recent')
 
 
+class RecentView(miru.View):
+
+    def __init__(
+        self,
+        ctx: lightbulb.SlashContext,
+        *,
+        timeout: float | int | timedelta | None = 120,
+        autodefer: bool | miru.AutodeferOptions = True
+    ) -> None:
+        self.ctx = ctx
+        fa, db_data = automata.FA.get_db_fa_data(ctx)
+
+        self.fa = fa
+        self.db_data = db_data
+
+        self.deleted = False
+
+        super().__init__(timeout=timeout, autodefer=autodefer)
+
+    async def update(self) -> None:
+        embeds = []
+        if not self.deleted:
+            embed = hikari.Embed(
+                title="Manage Recent Automation Data",
+                color=automata.classes.Color.LIGHT_BLUE
+            ).add_field(
+                "Saved Name",
+                self.db_data['fa_name']
+            )
+        else:
+            embed = hikari.Embed(
+                title="Manage Recent Automation Data",
+                description="Automation data has been deleted.",
+            )
+        embeds.append(embed)
+        embeds.append(self.fa.get_embed(with_diagram=False))
+
+        await self.ctx.interaction.edit_initial_response(
+            embeds=embeds,
+            components=self,
+        )
+
+    @miru.button(label="Rename", style=hikari.ButtonStyle.SECONDARY)
+    async def rename_button(self, ctx: miru.ViewContext, button: miru.Button) -> None:
+        modal = EditModal(self.db_data)
+        await ctx.respond_with_modal(modal)
+        await modal.wait()
+        if not modal.ctx:
+            await ctx.respond("timed out.", flags=hikari.MessageFlag.EPHEMERAL)
+            return
+        await modal.ctx.interaction.create_initial_response(
+            hikari.ResponseType.DEFERRED_MESSAGE_CREATE
+        )
+        new_name = modal.new_fa_name or self.db_data['fa_name']
+        self.db_data['fa_name'] = new_name
+        self.rename_in_db()
+
+        await modal.ctx.interaction.delete_initial_response()
+        await self.update()
+
+    @miru.button(label="Delete", style=hikari.ButtonStyle.DANGER)
+    async def delete_button(self, ctx: miru.ViewContext, button: miru.Button) -> None:
+        self.delete_from_db()
+        self.deleted = True
+        for item in self.children:
+            item.disabled = True
+        await self.update()
+        await asyncio.sleep(10)
+
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            item.disabled = True
+        await self.update()
+
+    def rename_in_db(self) -> None:
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            cursor: MySQLCursor = self.ctx.app.d.cursor
+            update_query = """
+                UPDATE Recent
+                SET
+                    fa_name=%s,
+                    updated_at=%s
+                WHERE
+                    id=%s AND
+                    user_id=%s
+            """
+            update_data = (self.db_data['fa_name'], current_time, self.db_data['id'], self.ctx.user.id)
+            cursor.execute(update_query, update_data)
+            self.ctx.app.d.db.commit()
+        except SQLError as e:
+            raise automata.AutomataError(e)
+
+    def delete_from_db(self) -> None:
+        try:
+            cursor: MySQLCursor = self.ctx.app.d.cursor
+            delete_query = """
+                DELETE FROM Recent
+                WHERE
+                    id=%s AND
+                    user_id=%s
+            """
+            delete_data = (self.db_data['id'], self.ctx.user.id)
+            cursor.execute(delete_query, delete_data)
+            self.ctx.app.d.db.commit()
+        except SQLError as e:
+            raise automata.AutomataError(e)
+
+
+class EditModal(miru.Modal):
+
+    _fa_name = miru.TextInput(
+        label="FA Name",
+        placeholder="",
+        value="",
+        max_length=80
+    )
+
+    def __init__(
+        self,
+        db: dict[str, str],
+    ) -> None:
+        self.db = db
+        self._fa_name.placeholder = db['fa_name']
+        self._fa_name.value = db['fa_name']
+        self.new_fa_name = None
+
+        super().__init__(title="Edit FA Name", timeout=300)
+
+
+    async def callback(self, ctx: miru.ModalContext) -> None:
+        self.new_fa_name = self._fa_name.value
+        self.ctx = ctx
+        self.stop()
+
+
 @recent_plugin.command
-@lightbulb.option('recent', 'Show recent inputs', autocomplete=True)
-@lightbulb.command('recent', 'Show recent inputs')
+@lightbulb.option('recent', 'Your past saved FAs', autocomplete=True, required=True)
+@lightbulb.command('recent', 'Manage your recent FAs')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def recent_cmd(ctx: lightbulb.SlashContext) -> None:
-    fa_name = ctx.options.recent
-    print("Found: ", fa_name)
+    await ctx.interaction.create_initial_response(
+        hikari.ResponseType.DEFERRED_MESSAGE_CREATE
+    )
 
-    try:
-        fa_id = int(fa_name)
-    except ValueError:
-        await ctx.respond('Invalid input.', flags=hikari.MessageFlag.EPHEMERAL)
-        return
-
-    if fa_id == 0:
-        await ctx.respond('Funny.', flags=hikari.MessageFlag.EPHEMERAL)
-        return
-
-    await ctx.respond('Fuck u panavath')
+    view = RecentView(ctx, timeout=600)
+    await view.update()
+    ctx.app.d.miru.start_view(view)
+    await view.wait()
 
 
 @recent_cmd.autocomplete("recent")

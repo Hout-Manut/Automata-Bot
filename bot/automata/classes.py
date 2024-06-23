@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import os
 import re
-import time
-from copy import deepcopy
 from datetime import datetime, timedelta
 
 import graphviz
@@ -11,15 +8,13 @@ import hikari
 import lightbulb
 import miru
 import mysql.connector
-from mysql.connector import Error
-from dotenv import load_dotenv
 import mysql.connector.cursor
+from mysql.connector import Error
 
 from .extensions import error_handler as error
 
 
 TransitionT = dict[tuple[str, str], set[str]]
-_NormalizedT = tuple[set[str], set[str], str, set[str], TransitionT]
 
 
 class Color(int):
@@ -89,7 +84,6 @@ class FA:
         else:
             self.is_dfa = False
 
-
         self.states = states
         self.alphabets = alphabets
         self.initial_state = initial_state
@@ -131,12 +125,19 @@ class FA:
 
             # Check if the record already exists
             check_query = """
-            SELECT id FROM Recent
-            WHERE user_id = %s AND fa_name = %s AND states = %s AND alphabets = %s
-            AND initial_state = %s AND final_states = %s AND transitions = %s
+            SELECT id
+            FROM Recent
+            WHERE
+                user_id = %s AND
+                states = %s AND
+                alphabets = %s AND
+                initial_state = %s AND
+                final_states = %s
+                AND transitions = %s
             """
-            data = (user_id, fa_name, states, alphabets,
-                    initial_state, final_states, tf)
+            data = (
+                user_id, states, alphabets,
+                initial_state, final_states, tf)
             cursor.execute(check_query, data)
             result = cursor.fetchall()
 
@@ -144,12 +145,23 @@ class FA:
                 # Records exist, update them all
                 update_query = """
                 UPDATE Recent
-                SET states = %s, alphabets = %s, initial_state = %s, final_states = %s, transitions = %s, updated_at = %s
-                WHERE user_id = %s AND fa_name = %s AND states = %s AND alphabets = %s
-                AND initial_state = %s AND final_states = %s AND transitions = %s
+                SET
+                    states = %s,
+                    alphabets = %s,
+                    initial_state = %s,
+                    final_states = %s,
+                    transitions = %s,
+                    updated_at = %s
+                WHERE
+                    user_id = %s AND
+                    states = %s AND
+                    alphabets = %s AND
+                    initial_state = %s AND
+                    final_states = %s AND
+                    transitions = %s
                 """
-                data_update = (states, alphabets, initial_state, final_states, tf, date, 
-                               user_id, fa_name, states, alphabets, initial_state, final_states, tf)
+                data_update = (states, alphabets, initial_state, final_states, tf, date,
+                               user_id, states, alphabets, initial_state, final_states, tf)
                 cursor.execute(update_query, data_update)
             else:
                 # Record does not exist, insert new one
@@ -167,7 +179,8 @@ class FA:
                     %s, %s, %s, %s, %s, %s, %s, %s
                 )
                 """
-                data_insert = (user_id, fa_name, states, alphabets, initial_state, final_states, tf, date)
+                data_insert = (user_id, fa_name, states, alphabets,
+                               initial_state, final_states, tf, date)
                 cursor.execute(insert_query, data_insert)
             ctx.app.d.db.commit()
 
@@ -472,7 +485,8 @@ class FA:
             new_transition_functions,
             self.ctx
         )
-        result = FAMinimizationResult(unreachable_states)
+        lost_states = self.states - new_dfa.states
+        result = FAMinimizationResult(lost_states)
         return new_dfa, result
 
     def minimize(self) -> tuple[FA, FAMinimizationResult]:
@@ -500,7 +514,8 @@ class FA:
             raise error.InvalidFAError("The FA is not a DFA.")
 
         minimized_dfa, _ = self.get_minimized_dfa()
-        is_same = self._normalized() == minimized_dfa._normalized()
+
+        is_same = len(self.states) == len(minimized_dfa.states)
         return not is_same
 
     def get_values(self) -> dict[str, str]:
@@ -534,8 +549,10 @@ class FA:
     def get_embed(
         self,
         image_ratio: str = "1",
+        color: hikari.Colorish = Color.LIGHT_BLUE,
         author_name: str | None = None,
-        author_icon: hikari.Resourceish | None = None
+        author_icon: hikari.Resourceish | None = None,
+        with_diagram: bool = True,
     ) -> hikari.Embed:
 
         title = "Deterministic" if self.is_dfa else "Non-deterministic"
@@ -543,7 +560,7 @@ class FA:
         embed = hikari.Embed(
             title=title,
             description=None,
-            color=Color.LIGHT_BLUE
+            color=color
         )
 
         name = "State" if len(self.states) == 1 else "States"
@@ -560,9 +577,11 @@ class FA:
         name = "Function" if len(self.t_func) == 1 else "Functions"
         embed.add_field(f"Transition {name}", self.t_func_str)
 
-        embed.set_image(self.get_diagram(image_ratio))
         if author_name or author_icon:
             embed.set_author(name=author_name, icon=author_icon)
+
+        if with_diagram:
+            embed.set_image(self.get_diagram(image_ratio))
 
         return embed
 
@@ -647,24 +666,30 @@ class FA:
         """
 
         def dfs(current_state: str, remaining_str: str) -> bool:
+            # Base case: if no more symbols are left in the input string
             if not remaining_str:
-                return current_state in self.final_states
+                # Check if the current state is a final state or if any epsilon transitions lead to a final state
+                if current_state in self.final_states:
+                    return True
+                if (current_state, "") in self.t_func:
+                    for next_state in self.t_func[(current_state, "")]:
+                        if dfs(next_state, remaining_str):
+                            return True
+                return False
 
+            # Process epsilon transitions first
             if (current_state, "") in self.t_func:
-                next_states = self.t_func[(current_state, "")]
-                for next_state in next_states:
-                    accepted = dfs(next_state, remaining_str)
-                    if accepted:
+                for next_state in self.t_func[(current_state, "")]:
+                    if dfs(next_state, remaining_str):
                         return True
 
+            # Process transitions for the current symbol
             symbol = remaining_str[0]
             remaining_str = remaining_str[1:]
 
             if (current_state, symbol) in self.t_func:
-                next_states = self.t_func[(current_state, symbol)]
-                for next_state in next_states:
-                    accepted = dfs(next_state, remaining_str)
-                    if accepted:
+                for next_state in self.t_func[(current_state, symbol)]:
+                    if dfs(next_state, remaining_str):
                         return True
 
             return False
@@ -735,6 +760,72 @@ class FA:
         return True
 
     @staticmethod
+    def get_db_fa_data(ctx: lightbulb.SlashContext) -> tuple[FA, dict[str, str]]:
+        """
+        A static method that returns the full FA data from the database.
+
+        Args:
+            ctx (lightbulb.SlashContext): The context of the command used, must have a recent option.
+
+        Returns:
+            tuple[FA, dict[str, str]]: A tuple containing the FA and the FA data.
+        """
+        try:
+            fa_id = int(ctx.options.recent)
+            if fa_id == 0:
+                raise error.UserError
+        except ValueError:
+            raise error.UserError
+
+        try:
+            cursor: mysql.connector.cursor.MySQLCursor = ctx.app.d.cursor
+
+            query = """
+                SELECT
+                    id,
+                    fa_name,
+                    states,
+                    alphabets,
+                    initial_state,
+                    final_states,
+                    transitions
+                FROM Recent
+                WHERE
+                    id=%s
+                AND
+                    user_id=%s;
+            """
+            cursor.execute(query, (str(fa_id), ctx.user.id))
+            result = cursor.fetchone()
+            if result is None:
+                raise error.InvalidDBQuery
+
+            states_str = str(result[2])
+            alphabets_str = str(result[3])
+            initial_state = str(result[4])
+            final_states_str = str(result[5])
+            transitions_str = str(result[6])
+
+            fa = FA.parse_db_data(
+                state_str=states_str,
+                alphabets_str=alphabets_str,
+                initial_state=initial_state,
+                final_states_str=final_states_str,
+                transitions_str=transitions_str,
+                ctx=ctx,
+            )
+
+            data = {
+                "id": str(result[0]),
+                "fa_name": str(result[1]),
+            }
+
+            return fa, data
+
+        except error.InvalidDBQuery:
+            raise
+
+    @staticmethod
     def get_fa_from_db(fa_id: int, ctx: lightbulb.SlashContext) -> FA:
         try:
             cursor: mysql.connector.cursor.MySQLCursor = ctx.app.d.cursor
@@ -755,40 +846,58 @@ class FA:
             cursor.execute(query, (str(fa_id), ctx.user.id))
             result = cursor.fetchone()
             if result is None:
-                raise error.UserError
+                raise error.InvalidDBQuery
 
             states_str = str(result[0])
             alphabets_str = str(result[1])
             initial_state = str(result[2])
             final_states_str = str(result[3])
             transitions_str = str(result[4])
-            states = RegexPatterns.STATES.findall(states_str)
-            alphabets = RegexPatterns.ALPHABETS.findall(alphabets_str)
-            final_states = RegexPatterns.STATES.findall(final_states_str)
 
-            transitions: TransitionT = {}
-            values = transitions_str.split("|")
-
-            for value in values:
-                match = RegexPatterns.TF.match(value.strip())
-                if match:
-                    k0, k1, _, v = match.groups()
-                    if (k0, k1) in transitions:
-                        transitions[(k0, k1)].add(v)
-                    else:
-                        transitions[(k0, k1)] = {v}
-            fa = FA(
-                states=set(states),
-                alphabets=set(alphabets),
+            return FA.parse_db_data(
+                state_str=states_str,
+                alphabets_str=alphabets_str,
                 initial_state=initial_state,
-                final_states=set(final_states),
-                transition_functions=transitions,
+                final_states_str=final_states_str,
+                transitions_str=transitions_str,
                 ctx=ctx,
             )
-            return fa
         except Error as e:
             raise error.AutomataError(
                 "Something went wrong while fetching the FA from the database.: " + e.args[1])
+
+    @staticmethod
+    def parse_db_data(
+        state_str: str,
+        alphabets_str: str,
+        initial_state: str,
+        final_states_str: str,
+        transitions_str: str,
+        ctx: lightbulb.SlashContext,
+    ) -> FA:
+        states = RegexPatterns.STATES.findall(state_str)
+        alphabets = RegexPatterns.ALPHABETS.findall(alphabets_str)
+        final_states = RegexPatterns.STATES.findall(final_states_str)
+
+        transitions: TransitionT = {}
+        values = transitions_str.split("|")
+
+        for value in values:
+            match = RegexPatterns.TF.match(value.strip())
+            if match:
+                k0, k1, _, v = match.groups()
+                if (k0, k1) in transitions:
+                    transitions[(k0, k1)].add(v)
+                else:
+                    transitions[(k0, k1)] = {v}
+        return FA(
+            states=set(states),
+            alphabets=set(alphabets),
+            initial_state=initial_state,
+            final_states=set(final_states),
+            transition_functions=transitions,
+            ctx=ctx,
+        )
 
     @staticmethod
     async def ask_or_get_fa(ctx: lightbulb.SlashContext) -> FA:
@@ -816,7 +925,9 @@ class FA:
                 await ctx.respond("Funny.", flags=hikari.MessageFlag.EPHEMERAL)
                 raise error.UserError
 
-            return FA.get_fa_from_db(fa_id, ctx)
+            fa = FA.get_fa_from_db(fa_id, ctx)
+            fa.save_to_db(ctx)
+            return fa
         except AttributeError:
             pass  # No recent data given, asking the user instead
 
@@ -844,7 +955,7 @@ class FA:
         other_normalized = other._normalized()
         return self_normalized == other_normalized
 
-    def _normalized(self) -> _NormalizedT:
+    def _normalized(self) -> tuple:
         state_list = sorted(self.states)
         state_map = {state: f's{i}' for i, state in enumerate(state_list)}
 
@@ -861,7 +972,6 @@ class FA:
 
         # Return normalized DFA representation
         return (set(state_map.values()), self.alphabets, normalized_initial_state, normalized_final_states, normalized_transitions)
-
 
 
 class FAStringResult:
@@ -944,7 +1054,8 @@ class FAMinimizationResult:
             title="Automata Minimization",
             color=Color.YELLOW
         )
-        embed.add_field("Unreachable States", self.unreachable_states_str)
+        embed.add_field("Unreachable States",
+                        f"{{{self.unreachable_states_str}}}")
         return embed
 
 
@@ -954,31 +1065,31 @@ class InputFAModal(miru.Modal):
         label="States",
         placeholder="q0 q1 q2...",
         required=True,
-        value="q0 q1",
+        value="",
     )
     _alphabets = miru.TextInput(
         label="Alphabets",
         placeholder="a b c...",
         required=True,
-        value="a b",
+        value="",
     )
     _initial_state = miru.TextInput(
         label="Initial State",
         placeholder="q0",
         required=True,
-        value="q0",
+        value="",
     )
     _final_states = miru.TextInput(
         label="Final State(s)",
         placeholder="q2...",
         required=True,
-        value="q1",
+        value="",
     )
     _transition_functions = miru.TextInput(
         label="Transition Functions",
         placeholder="state,symbol(None for ε)=state\nq0,a=q1\nq0,=q2\n...",
         required=True,
-        value="q0,a=q1\nq1,b=q0",
+        value="",
         style=hikari.TextInputStyle.PARAGRAPH,
     )
 
@@ -1039,7 +1150,6 @@ class InputFAModal(miru.Modal):
                     transition_dict[(k0, k1)].add(v)
                 else:
                     transition_dict[(k0, k1)] = {v}
-
 
         return transition_dict
 

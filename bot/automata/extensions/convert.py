@@ -1,7 +1,6 @@
 import hikari
 import hikari.commands
 import lightbulb
-import miru
 
 import bot.automata as automata
 from ._history_autocomplete import history_autocomplete
@@ -21,7 +20,7 @@ async def convert_cmd(ctx: lightbulb.SlashCommandGroup) -> None: ...
 )
 @lightbulb.command("nfa_to_dfa", "Convert a NFA to a DFA")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def nfa_dfa_cmd(ctx: lightbulb.SlashSubCommand) -> None:
+async def nfa_dfa_cmd(ctx: lightbulb.SlashContext) -> None:
     if ctx.options.recent != "":
         await ctx.interaction.create_initial_response(
             hikari.ResponseType.DEFERRED_MESSAGE_CREATE
