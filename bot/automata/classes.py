@@ -1030,28 +1030,16 @@ class InputFAModal(miru.Modal):
     def transitions_value(self) -> dict[tuple[str, str], set[str]]:
         transition_dict = {}
 
-        print("---------------------------------------------")
-        print("Input Transition Functions:")
-        print(self.transition_functions)
-        print("---------------------------------------------")
-
         values = self.transition_functions.split("\n")
         for value in values:
             match = RegexPatterns.TF.match(value.strip())
             if match:
                 k0, k1, _, v = match.groups()
-                print(f"Processing transition: {k0}, {k1}, {v}")
                 if (k0, k1) in transition_dict:
                     transition_dict[(k0, k1)].add(v)
-                    print(f"Adding to existing transition: {k0}, {k1}, {v}")
                 else:
                     transition_dict[(k0, k1)] = {v}
-                    print(f"Adding new transition: {k0}, {k1}, {v}")
 
-        print("---------------------------------------------")
-        print("Output Transition Dictionary:")
-        print(transition_dict)
-        print("---------------------------------------------")
 
         return transition_dict
 
