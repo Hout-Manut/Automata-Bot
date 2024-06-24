@@ -40,7 +40,7 @@ class RecentView(miru.View):
                 title="Manage Recent Automation Data",
                 color=automata.classes.Color.LIGHT_BLUE
             ).add_field(
-                "Saved Name",
+                "Saved As",
                 self.db_data['fa_name']
             )
         else:
@@ -58,11 +58,10 @@ class RecentView(miru.View):
 
     @miru.button(label="Rename", style=hikari.ButtonStyle.SECONDARY)
     async def rename_button(self, ctx: miru.ViewContext, button: miru.Button) -> None:
-        modal = EditModal(self.db_data)
+        modal = RenameModal(self.db_data)
         await ctx.respond_with_modal(modal)
         await modal.wait()
         if not modal.ctx:
-            await ctx.respond("timed out.", flags=hikari.MessageFlag.EPHEMERAL)
             return
         await modal.ctx.interaction.create_initial_response(
             hikari.ResponseType.DEFERRED_MESSAGE_CREATE
@@ -70,6 +69,22 @@ class RecentView(miru.View):
         new_name = modal.new_fa_name or self.db_data['fa_name']
         self.db_data['fa_name'] = new_name
         self.rename_in_db()
+
+        await modal.ctx.interaction.delete_initial_response()
+        await self.update()
+
+    @miru.button(label="Edit", style=hikari.ButtonStyle.SECONDARY)
+    async def edit_button(self, ctx: miru.ViewContext, button: miru.Button) -> None:
+        modal = automata.EditFAModal(self.fa)
+        await ctx.respond_with_modal(modal)
+        await modal.wait()
+        if not modal.ctx:
+            return
+        await modal.ctx.interaction.create_initial_response(
+            hikari.ResponseType.DEFERRED_MESSAGE_CREATE
+        )
+        self.fa = modal.fa
+        self.edit_in_db()
 
         await modal.ctx.interaction.delete_initial_response()
         await self.update()
@@ -102,7 +117,44 @@ class RecentView(miru.View):
                     id=%s AND
                     user_id=%s
             """
-            update_data = (self.db_data['fa_name'], current_time, self.db_data['id'], self.ctx.user.id)
+            update_data = (
+                self.db_data['fa_name'], current_time, self.db_data['id'], self.ctx.user.id)
+            cursor.execute(update_query, update_data)
+            self.ctx.app.d.db.commit()
+        except SQLError as e:
+            raise automata.AutomataError(e)
+
+    def edit_in_db(self) -> None:
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        values = self.fa.get_values()
+
+        user_id = self.ctx.user.id
+        states = values["states"]
+        alphabets = values["alphabets"]
+        initial_state = values["initial_state"]
+        final_states = values["final_states"]
+        tf = values["tf"]  # Transition functions
+
+        try:
+            cursor: MySQLCursor = self.ctx.app.d.cursor
+            update_query = """
+                UPDATE Recent
+                SET
+                    states = %s,
+                    alphabets = %s,
+                    initial_state = %s,
+                    final_states = %s,
+                    transitions = %s,
+                    updated_at=%s
+                WHERE
+                    id=%s AND
+                    user_id=%s
+            """
+            update_data = (
+                states, alphabets, initial_state, final_states, tf, current_time,
+                self.db_data['id'], user_id,
+                )
             cursor.execute(update_query, update_data)
             self.ctx.app.d.db.commit()
         except SQLError as e:
@@ -124,7 +176,7 @@ class RecentView(miru.View):
             raise automata.AutomataError(e)
 
 
-class EditModal(miru.Modal):
+class RenameModal(miru.Modal):
 
     _fa_name = miru.TextInput(
         label="FA Name",
@@ -143,7 +195,6 @@ class EditModal(miru.Modal):
         self.new_fa_name = None
 
         super().__init__(title="Edit FA Name", timeout=300)
-
 
     async def callback(self, ctx: miru.ModalContext) -> None:
         self.new_fa_name = self._fa_name.value

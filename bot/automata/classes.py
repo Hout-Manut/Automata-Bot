@@ -9,7 +9,7 @@ import lightbulb
 import miru
 import mysql.connector
 import mysql.connector.cursor
-from mysql.connector import SQLError
+from mysql.connector import Error as SQLError
 
 from .extensions import error_handler as error
 
@@ -46,7 +46,7 @@ class RegexPatterns:
 
     TF = re.compile(r"\b([\w']+)\s*[,\s]\s*([\w']*)\s*(=|>|->)\s*([\w']+)\b")
     """
-    Matches word, followed by `,` or `space`, a word or nothing, 
+    Matches word, followed by `,` or `space`, a word or nothing,
     then any of these [`=`, `>`, `->`] and another word.
     """
 
@@ -106,7 +106,7 @@ class FA:
     def save_to_db(self, ctx: lightbulb.SlashContext | None = None) -> None:
         """
         Saves this FA object to the database. Only updates the date if this already exists in the database.
-        
+
         Args:
             ctx (Context): the context of an interaction to get the user id.
         """
@@ -150,7 +150,7 @@ class FA:
                 states = %s AND
                 alphabets = %s AND
                 initial_state = %s AND
-                final_states = %s AND 
+                final_states = %s AND
                 transitions = %s
             """
             data = (user_id, states, alphabets, initial_state, final_states, tf)
@@ -357,7 +357,7 @@ class FA:
     def nfa_to_dfa(self) -> tuple[FA, FAConversionResult]:
         """
         Generate a DFA from an NfA.
-        
+
         Returns:
             FA: the new DFA.
             FAConversionResult: A result object that contains informations of the conversion.
@@ -538,7 +538,7 @@ class FA:
             self.ctx,
         )
         lost_states = self.states - new_dfa.states
-        result = FAMinimizationResult(lost_states)
+        result = FAMinimizationResult(unreachable_states, lost_states)
         return new_dfa, result
 
     def minimize(self) -> tuple[FA, FAMinimizationResult]:
@@ -573,7 +573,7 @@ class FA:
 
     def get_values(self) -> dict[str, str]:
         """
-        Converts all of the FA data into a string representation.
+        Converts all of the FA data into string representations.
         Mainly used to store into the database.
         """
         states = list(self.states)
@@ -613,7 +613,7 @@ class FA:
     ) -> hikari.Embed:
         """
         Generate an embed with the information of the FA.
-        
+
         Embeds are those cool Discord message blocks that you can add accent colors to.
         """
 
@@ -646,7 +646,7 @@ class FA:
     def get_diagram(self, ratio: str = "1") -> hikari.File:
         """
         Get the diagram for the FA.
-        
+
         Args:
             ratio (str): How wide the diagram image will be.
 
@@ -726,7 +726,7 @@ class FA:
         def dfs(current_state: str, remaining_str: str) -> bool:
             """
             Search through the string with a depth-first search algorithm.
-            
+
             Returns:
                 bool: True if any of the end of the search branches lands on a final state.
             """
@@ -1102,8 +1102,10 @@ class FAMinimizationResult:
     def __init__(
         self,
         unreachable_states: set[str],
+        deleted_states: set[str],
     ) -> None:
         self.unreachable_states = unreachable_states
+        self.deleted_states = deleted_states
 
     @property
     def unreachable_states_str(self) -> str:
@@ -1114,11 +1116,23 @@ class FAMinimizationResult:
         if buffer == []:
             return "No unreachable states."
 
-        return ", ".join(buffer)
+        return f'{{{", ".join(buffer)}}}'
+
+    @property
+    def deleted_states_str(self) -> str:
+        buffer = []
+        for state in self.deleted_states:
+            buffer.append(f"`{state}`")
+
+        if buffer == []:
+            return "No deleted states."
+
+        return f'{{{", ".join(buffer)}}}'
 
     def get_embed(self) -> hikari.Embed:
         embed = hikari.Embed(title="Automata Minimization", color=Color.YELLOW)
-        embed.add_field("Unreachable States", f"{{{self.unreachable_states_str}}}")
+        embed.add_field("Deleted States", self.deleted_states_str)
+        embed.add_field("Unreachable States", self.unreachable_states_str)
         return embed
 
 
