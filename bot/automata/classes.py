@@ -33,18 +33,18 @@ class RegexPatterns:
     """A class that contains regex patterns to use for parsing user inputs"""
 
     STATES = re.compile(r"\b[\w']+\b")
-    """Matches words (`a-zA-z0-9_'`)"""
+    """Matches word (`a-zA-z0-9_'`)"""
 
-    ALPHABETS = re.compile(r"[\w']+")
-    """Matches single letters (`a-zA-z0-9_'`)"""
+    ALPHABETS = re.compile(r"\w")
+    """Matches single letter (`a-zA-z0-9_`)"""
 
     INITIAL_STATE = re.compile(r"\b[\w']+\b")
     """Matches word (`a-zA-z0-9_'`)"""
 
     FINAL_STATES = re.compile(r"\b[\w']+\b")
-    """Matches words (`a-zA-z0-9_'`)"""
+    """Matches word (`a-zA-z0-9_'`)"""
 
-    TF = re.compile(r"\b([\w']+)\s*[,\s]\s*([\w']*)\s*(=|>|->)\s*([\w']+)\b")
+    TF = re.compile(r"\b([\w']+)\s*[,\s+]\s*([\w']*)\s*(=|>|->)\s*([\w']+)\b")
     """
     Matches word, followed by `,` or `space`, a word or nothing,
     then any of these [`=`, `>`, `->`] and another word.
