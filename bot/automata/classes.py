@@ -156,22 +156,24 @@ class FA:
             data = (user_id, states, alphabets, initial_state, final_states, tf)
             cursor.execute(check_query, data)
             result = cursor.fetchall()
+            
 
             if result:
-                fa_id = result
-                # Records exist, update them all*
-                update_query = """
-                UPDATE Recent
-                SET
-                    updated_at = %s
-                WHERE
-                    id = %s
-                """
-                data_update = (
-                    date,
-                    fa_id,
-                )
-                cursor.execute(update_query, data_update)
+                for fa_id in result:
+                    # Records exist, update them all*
+                    
+                    update_query = """
+                    UPDATE Recent
+                    SET
+                        updated_at = %s
+                    WHERE
+                        id = %s
+                    """
+                    data_update = (
+                        date,
+                        fa_id[0],
+                    )
+                    cursor.execute(update_query, data_update)
             else:
                 # Record does not exist, insert new one
                 insert_query = """
