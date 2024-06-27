@@ -7,7 +7,8 @@ load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
 DEFAULT_GUILDS = os.getenv("GUILDS")
-if DEFAULT_GUILDS is not None:
+
+if DEFAULT_GUILDS is not None and DEFAULT_GUILDS != "":
     DEFAULT_GUILDS = [int(x) for x in DEFAULT_GUILDS.split(',')]
 
 DB_HOST = os.getenv("DB_HOST")

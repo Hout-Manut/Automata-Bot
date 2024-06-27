@@ -1,0 +1,34 @@
+# NFA that accepts "aaa"
+states:
+q0 q1 q2 q3
+alphabets:
+ab
+initial state:
+q0
+final state:
+q3
+tf:
+q0,a=q1
+q1,a=q2
+q2,a=q3
+
+# DFA version
+states:
+q0 q1 q2 q3 q4
+alphabets:
+ab
+initial state:
+q0
+final state:
+q4
+tf:
+q0,a=q2
+q0,b=q1
+q1,a=q1
+q1,b=q1
+q2,a=q3
+q2,b=q1
+q3,a=q4
+q3,b=q1
+q4,a=q1
+q4,b=q1

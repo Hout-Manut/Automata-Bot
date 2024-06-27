@@ -158,37 +158,18 @@ class FA:
             result = cursor.fetchall()
 
             if result:
+                fa_id = result
                 # Records exist, update them all*
                 update_query = """
                 UPDATE Recent
                 SET
-                    states = %s,
-                    alphabets = %s,
-                    initial_state = %s,
-                    final_states = %s,
-                    transitions = %s,
                     updated_at = %s
                 WHERE
-                    user_id = %s AND
-                    states = %s AND
-                    alphabets = %s AND
-                    initial_state = %s AND
-                    final_states = %s AND
-                    transitions = %s
+                    id = %s
                 """
                 data_update = (
-                    states,
-                    alphabets,
-                    initial_state,
-                    final_states,
-                    tf,
                     date,
-                    user_id,
-                    states,
-                    alphabets,
-                    initial_state,
-                    final_states,
-                    tf,
+                    fa_id,
                 )
                 cursor.execute(update_query, data_update)
             else:
