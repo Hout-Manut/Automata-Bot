@@ -38,57 +38,6 @@ python -O main.py
 ```
 
 
-## Commands Breakdown
-### design:
-    - User input FA data and the program will message back a diagram image.
-    - Args:
-        - Form : Will be shown a form to enter the data after the command’s invocation
-    - Returns:
-        - Image of the diagram
-    - Additional functions:
-        - Save the data (optionally the image) with the user ID to database
-        - Give the user options to use the output image further upon showing to them (convert or minimize)
-### test fa:
-    - User input FA data and the program will message back an answer whether the FA is deterministic or not.
-    - Args:
-        - Form : Will be shown a form to enter the data after the command’s invocation
-    - Returns:
-        - Boolean message
-    - Additional functions:
-        - Save the data with the user ID to database
-        - Give the user options to use the output image further upon showing to them (generate a diagram)
-### test string:
-    - User input char/string and the program checks if it is accepted by an FA. FA will be asked after the command’s invocation. The user may edit the string afterward as many times as they like.
-    - Args:
-        - recent (Optional) : Let the user select from their past FAs. If not, show a form to input a new FA
-    - Returns:
-        - Boolean message and the string that updates in realtime.
-    - Additional functions:
-        - Idk yet
-### Convert NFA to DFA:
-    - Gets an NFA and converts to DFA, raise an error if passed a DFA.
-    - Args:
-        - recent (Optional) : Let the user select from their saved NFA. If not, show a form to input a new NFA
-    - Returns:
-        - DFA data and diagram
-    - Additional functions:
-        - Save the data with the user ID to database
-        - Give the user options to use the output image further upon showing to them (minimize)
-### minimize:
-    - Gets a DFA and shorten it, raise an error if passed a NFA or it can not be shortened further.
-    - Args:
-        - recent (Optional) : Let the user select from their saved DFA. If not, show a form to input a new DFA
-    - Returns:
-        - Minimized DFA data and diagram
-    - Additional functions:
-        - Save the data with the user ID to database
-### history:
-    - Gets the user past FA, let them delete and maybe set a name.
-    - Args:
-        - History : The user’s FA history
-    - Returns:
-        - The FA data and Diagram, additional data such as FA types, FA is minimize-able, date and the option to delete and edit.
-
 ## Data Structure:
 The FA data consist of 5 values:
 - states (set[str]) : Finite set of states (Q{q})
@@ -97,8 +46,33 @@ The FA data consist of 5 values:
 - final_states (set[str]) : Finite set of accepted states
 - transition_functions (dict[tuple, str]) : Tuple holds (q, s) = q’
 
+We can add additional data such as is it a NDA or DFA, can be minimized or not etc. (bool?)
 
- We can add additional data such as is it a NDA or DFA, can be minimized or not etc. (bool?)
+We can use Discord user id as an identification that links the user to their FA history (long int). And the time they input the FA to be sorted by date.
 
 
- We can use Discord user id as an identification that links the user to their FA history (long int). And the time they input the FA to be sorted by date.
+## Detailed Guide for the Bot
+Once you have entered a command in the message box. You can choose how to give FA data for the bot to process.
+Most commands will have a optional `recent` option where you can choose past FA data you have entered to the bot.
+
+![](storage\examples\command.png)
+---
+If you dont choose the recent option, a form will pop up asking you to enter each data of the FA you want to give to the bot.
+
+![](storage\examples\modal.png)
+
+Let's breakdown each of the elements.
+- `States`: The names of all of the states in the FA. Can be separated by spaces, commas, etc.
+- `Alphabets`: The availible symbols to use in the FA. Does not need seperations. Does not accept non-alphabet characters (commas, question marks, etc).
+- `Initial` States: The start state of the FA. Entered state must be one of the states in the `States` section above.
+- `Final State(s)`: Can be one or more states. Entered states must be a subset of the states in the `States` section above.
+- `Transition Functions`: Each function must be seperated by a newline. There are also multiple accepted separators too. States and symbols must exists in the `States` and `Alphabets` sections.
+
+#### Note: If the data entered is invalid, The form will show this generic error `Something went wrong. Try again.`. This is a Discord limitation.
+---
+If you choose the `recent` option. This will show up containing your recent FA datas you entered from the past, sorted by last used.
+Selecting one and press enter will skip the form and take you to the result.
+
+![](storage\examples\recent.png)
+
+#### Please do not add or remove any characters from the selection.
