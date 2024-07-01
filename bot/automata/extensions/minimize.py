@@ -9,14 +9,14 @@ minimize_plugin = lightbulb.Plugin("minimize")
 
 
 @minimize_plugin.command
-@lightbulb.command("minimize", "Minimize a FA")
+@lightbulb.command("minimize", "Minimize an FA")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def minimize_cmd(ctx: lightbulb.SlashCommandGroup) -> None: ...
 
 
 @minimize_cmd.child
 @lightbulb.option(
-    "recent", "Your past saved FAs", autocomplete=True, required=False, default=""
+    "recent", "Your recent FA inputs", autocomplete=True, required=False, default=""
 )
 @lightbulb.command("dfa", "Minimize a DFA")
 @lightbulb.implements(lightbulb.SlashSubCommand)

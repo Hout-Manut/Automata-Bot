@@ -13,8 +13,8 @@ design_plugin = lightbulb.Plugin("design")
 
 
 @design_plugin.command
-@lightbulb.option("recent", "Recent FA inputs", autocomplete=True, required=False, default="")
-@lightbulb.command("design", "Design an automation")
+@lightbulb.option("recent", "Your recent FA inputs", autocomplete=True, required=False, default="")
+@lightbulb.command("design", "Design an automaton")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def design_cmd(ctx: lightbulb.SlashContext) -> None:
     if ctx.options.recent != "":

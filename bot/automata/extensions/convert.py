@@ -16,9 +16,9 @@ async def convert_cmd(ctx: lightbulb.SlashCommandGroup) -> None: ...
 
 @convert_cmd.child
 @lightbulb.option(
-    "recent", "Your past saved FAs", autocomplete=True, required=False, default=""
+    "recent", "Your recent FA inputs", autocomplete=True, required=False, default=""
 )
-@lightbulb.command("nfa_to_dfa", "Convert a NFA to a DFA")
+@lightbulb.command("nfa_to_dfa", "Convert an NFA to a DFA")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def nfa_dfa_cmd(ctx: lightbulb.SlashContext) -> None:
     if ctx.options.recent != "":

@@ -203,7 +203,7 @@ class RenameModal(miru.Modal):
 
 
 @recent_plugin.command
-@lightbulb.option('recent', 'Your past saved FAs', autocomplete=True, required=True)
+@lightbulb.option('recent', 'Your recent FA inputs', autocomplete=True, required=True)
 @lightbulb.command('recent', 'Manage your recent FAs')
 @lightbulb.implements(lightbulb.SlashCommand)
 async def recent_cmd(ctx: lightbulb.SlashContext) -> None:

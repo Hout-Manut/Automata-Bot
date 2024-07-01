@@ -33,7 +33,7 @@ async def test_fa_cmd(ctx: lightbulb.SlashContext) -> None:
 
 @test_cmd.child
 @lightbulb.option(
-    "recent", "Recent FA inputs", autocomplete=True, required=False, default=""
+    "recent", "Your recent FA inputs", autocomplete=True, required=False, default=""
 )
 @lightbulb.command("string", "Test if the string is accepted or not")
 @lightbulb.implements(lightbulb.SlashSubCommand)
