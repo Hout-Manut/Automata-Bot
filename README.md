@@ -52,10 +52,18 @@ We store Discord user id as an identification that links the user to their FA hi
 ## Detailed Guide for the Bot
 Once you have entered a command in the message box. You can choose how to give FA data for the bot to process.
 Most commands will have a optional `recent` option where you can choose past FA data you have entered to the bot.
+
+<center>
 ![command](https://github.com/Hout-Manut/Automata-Bot/assets/145747797/bc009126-8273-4806-a179-226cd13d9535)
+</center>
+
 ---
 If you do not choose the recent option, a form will pop up asking you to enter each data of the FA you want to give to the bot.
+
+<center>
 ![modal](https://github.com/Hout-Manut/Automata-Bot/assets/145747797/cd8fc669-f6a1-4022-81ab-76bf23c43545)
+</center>
+
 Let's breakdown each of the elements.
 ### States
 ___
@@ -117,6 +125,7 @@ q0, ab = q1
 ---
 If you choose the `recent` option. This will show up containing your recent FA datas you entered from the past, sorted by last used.
 Selecting one and press enter will skip the form and take you to the result.
+<center>
 ![recent](https://github.com/Hout-Manut/Automata-Bot/assets/145747797/e8455918-d7a8-486e-851b-514d43eda28c)
-
+</center>
 #### Please do not add or remove any characters from the selection.
