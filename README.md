@@ -62,7 +62,7 @@ If you do not choose the recent option, a form will pop up asking you to enter e
 Let's breakdown each of the elements.
 - `States`: The names of all of the states in the FA. Can be separated by spaces, commas, etc.
 - `Alphabets`: The availible symbols to use in the FA. Does not need seperations. Does not accept non-alphabet characters (commas, question marks, etc).
-- `Initial` States: The start state of the FA. Entered state must be one of the states in the `States` section above.
+- `Initial States`: The start state of the FA. Entered state must be one of the states in the `States` section above.
 - `Final State(s)`: Can be one or more states. Entered states must be a subset of the states in the `States` section above.
 - `Transition Functions`: Each function must be seperated by a newline. There are also multiple accepted separators too. States and symbols must exists in the `States` and `Alphabets` sections.
 
