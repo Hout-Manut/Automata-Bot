@@ -55,7 +55,7 @@ Most commands will have a optional `recent` option where you can choose past FA 
 
 ![](storage\examples\command.png)
 ---
-If you dont choose the recent option, a form will pop up asking you to enter each data of the FA you want to give to the bot.
+If you do not choose the recent option, a form will pop up asking you to enter each data of the FA you want to give to the bot.
 
 ![](storage\examples\modal.png)
 
