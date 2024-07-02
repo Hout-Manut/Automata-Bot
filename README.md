@@ -28,7 +28,7 @@ python venv .venv
 ```bash
 pip install -r requirements.txt
 ```
-- Run setup
+- Run setup to setup the database
 ```bash
 python setup.py
 ```
@@ -46,9 +46,7 @@ The FA data consist of 5 values:
 - final_states (set[str]) : Finite set of accepted states
 - transition_functions (dict[tuple, str]) : Tuple holds (q, s) = q’
 
-We can add additional data such as is it a NDA or DFA, can be minimized or not etc. (bool?)
-
-We can use Discord user id as an identification that links the user to their FA history (long int). And the time they input the FA to be sorted by date.
+We store Discord user id as an identification that links the user to their FA history (long int). And the time they entered or updated an FA.
 
 
 ## Detailed Guide for the Bot
