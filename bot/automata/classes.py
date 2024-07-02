@@ -32,19 +32,19 @@ class Color(int):
 class RegexPatterns:
     """A class that contains regex patterns to use for parsing user inputs"""
 
-    STATES = re.compile(r"\b[\w']+\b")
-    """Matches word (`a-zA-z0-9_'`)"""
+    STATES = re.compile(r"\b[\w'‘]+\b")
+    """Matches word (`a-zA-z0-9_'‘`)"""
 
     ALPHABETS = re.compile(r"\w")
     """Matches single letter (`a-zA-z0-9_`)"""
 
-    INITIAL_STATE = re.compile(r"\b[\w']+\b")
-    """Matches word (`a-zA-z0-9_'`)"""
+    INITIAL_STATE = re.compile(r"\b[\w'‘]+\b")
+    """Matches word (`a-zA-z0-9_'‘`)"""
 
-    FINAL_STATES = re.compile(r"\b[\w']+\b")
-    """Matches word (`a-zA-z0-9_'`)"""
+    FINAL_STATES = re.compile(r"\b[\w'‘]+\b")
+    """Matches word (`a-zA-z0-9_'‘`)"""
 
-    TF = re.compile(r"\b([\w']+)\s*[,\s+]\s*([\w']*)\s*(=|>|->)\s*([\w']+)\b")
+    TF = re.compile(r"\b([\w'‘]+)\s*[,\s+]\s*([\w'‘]*)\s*(=|>|->)\s*([\w'‘]+)\b")
     """
     Matches word, followed by `,` or `space`, a word or nothing,
     then any of these [`=`, `>`, `->`] and another word.
@@ -443,22 +443,22 @@ class FA:
                     if (state, symbol) in reachable_t_func
                     and reachable_t_func[(state, symbol)] & current
                 )
-            for partition in partitions[:]:
-                intersection = partition & state_transitions
-                difference = partition - state_transitions
+                for partition in partitions[:]:
+                    intersection = partition & state_transitions
+                    difference = partition - state_transitions
 
-                if intersection and difference:
-                    partitions.remove(partition)
-                    partitions.extend([intersection, difference])
-                    if partition in worklist:
-                        worklist.remove(partition)
-                        worklist.extend([intersection, difference])
-                    else:
-                        worklist.append(
-                            intersection
-                            if len(intersection) <= len(difference)
-                            else difference
-                        )
+                    if intersection and difference:
+                        partitions.remove(partition)
+                        partitions.extend([intersection, difference])
+                        if partition in worklist:
+                            worklist.remove(partition)
+                            worklist.extend([intersection, difference])
+                        else:
+                            worklist.append(
+                                intersection
+                                if len(intersection) <= len(difference)
+                                else difference
+                            )
 
         return partitions
 
@@ -1064,21 +1064,25 @@ class FAConversionResult:
     def state_names_str(self) -> str:
         string = ""
         for states, name in self.state_names.items():
-            string += f"`{{{self.get_str_from_frozenset(states)}}}` -> `{name}`\n"
+            string += f"`{self.get_str_from_frozenset(states)}` -> `{name}`\n"
         return string
 
     def get_embed(self) -> hikari.Embed:
         embed = hikari.Embed(title="Automata Conversion", color=Color.YELLOW)
-        embed.add_field("State Closures", self.state_names_str)
+        name = "Closure" if len(self.state_names) == 1 else "Closures"
+        embed.add_field(f"State {name}", self.state_names_str)
         return embed
 
     @staticmethod
     def get_str_from_frozenset(states: frozenset[str]) -> str:
+        if len(states) == 0:
+            return "Trap State"
+        
         buffer = []
         for state in states:
             state = "Trap State" if state == "" else state
             buffer.append(f"`{state}`")
-        return ", ".join(buffer)
+        return f"{{{', '.join(buffer)}}}"
 
 
 class FAMinimizationResult:
@@ -1097,7 +1101,7 @@ class FAMinimizationResult:
             buffer.append(f"`{state}`")
 
         if buffer == []:
-            return "No unreachable states."
+            return "None"
 
         return f'{{{", ".join(buffer)}}}'
 
@@ -1108,14 +1112,16 @@ class FAMinimizationResult:
             buffer.append(f"`{state}`")
 
         if buffer == []:
-            return "No deleted states."
+            return "None"
 
         return f'{{{", ".join(buffer)}}}'
 
     def get_embed(self) -> hikari.Embed:
-        embed = hikari.Embed(title="Automata Minimization", color=Color.YELLOW)
-        embed.add_field("Deleted States", self.deleted_states_str)
-        embed.add_field("Unreachable States", self.unreachable_states_str)
+        embed = hikari.Embed(title="Automaton Minimization", color=Color.YELLOW)
+        name = "State" if len(self.deleted_states) == 1 else "States"
+        embed.add_field(f"Minimized {name}", self.deleted_states_str)
+        name = "State" if len(self.deleted_states) == 1 else "States"
+        embed.add_field(f"Unreachable {name}", self.unreachable_states_str)
         return embed
 
 
