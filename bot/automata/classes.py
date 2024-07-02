@@ -160,8 +160,7 @@ class FA:
 
             if result:
                 for fa_id in result:
-                    # Records exist, update them all*
-                    
+                    # Records exist, update them all
                     update_query = """
                     UPDATE Recent
                     SET
@@ -346,12 +345,14 @@ class FA:
             FAConversionResult: A result object that contains informations of the conversion.
         """
         initial_closure = self.epsilon_closure(self.initial_state)
-        dfa_states = {frozenset(initial_closure): "q'0"}
+        dfa_states = {frozenset(initial_closure): "q'0"}  # Custom prime state names
         dfa_states_list = [initial_closure]
         dfa_transition_functions: TransitionT = {}
         dfa_final_states = set()
 
+        # States to be marked, starts from the initial state.
         unmarked_states = [initial_closure]
+        # For tracking custom names.
         state_counter = 1
 
         while unmarked_states:
@@ -410,6 +411,10 @@ class FA:
         return self.nfa_to_dfa()
 
     def get_unreachable_states(self) -> set[str]:
+        """
+        Find any unreacble states by going through the states from the start using the transition functions.
+        If by the end there are states that have not been reached, those are the unreachable states.
+        """
         reachable_states: set[str] = set()
         stack: list[str] = [self.initial_state]
 
@@ -463,6 +468,13 @@ class FA:
         return partitions
 
     def get_minimized_dfa(self) -> tuple[FA, FAMinimizationResult]:
+        """
+        Minimize the current DFA object.
+        
+        Returns:
+            FA: a new DFA object.
+            FAMinimizationResult: a result object containing the details of the minimization.
+        """
         unreachable_states = self.get_unreachable_states()
         reachable_states = self.states - unreachable_states
 
@@ -532,8 +544,7 @@ class FA:
             DFA: The minimized DFA as a new object.
 
         Raises:
-            error.InvalidFAError: If the FA is not an DFA.
-            error.NotMinimizableError: If the DFA can not be minimized.
+            InvalidFAError: If the FA is not an DFA.
         """
         if self.is_nfa:
             raise error.InvalidFAError("The FA is not a DFA.")
@@ -545,12 +556,14 @@ class FA:
 
     @property
     def is_minimizable(self) -> bool:
-        """Checks if this fa is minimizable"""
+        """Checks if this fa is minimizable. True if it is, else False."""
         if self.is_nfa:
             raise error.InvalidFAError("The FA is not a DFA.")
 
+        # Try to minimize the DFA
         minimized_dfa, _ = self.get_minimized_dfa()
 
+        # Check if the minimized DFA is the same as the old DFA
         is_same = len(self.states) == len(minimized_dfa.states)
         return not is_same
 
