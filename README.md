@@ -60,11 +60,61 @@ If you do not choose the recent option, a form will pop up asking you to enter e
 ![](storage\examples\modal.png)
 
 Let's breakdown each of the elements.
-- `States`: The names of all of the states in the FA. Can be separated by spaces, commas, etc.
-- `Alphabets`: The availible symbols to use in the FA. Does not need seperations. Does not accept non-alphabet characters (commas, question marks, etc).
-- `Initial State`: The start state of the FA. Entered state must be one of the states in the `States` section above.
-- `Final State(s)`: Can be one or more states. Entered states must be a subset of the states in the `States` section above.
-- `Transition Functions`: Each function must be seperated by a newline. There are also multiple accepted separators too. States and symbols must exists in the `States` and `Alphabets` sections.
+### States
+___
+The names of all of the states in the FA. Must be separated by spaces, commas, etc.
+```json
+// OK
+q0 q1
+q0,q1
+q'0-q‘1
+q_0,+-:|!@#$%^&*()`~ q'1
+
+// Not OK
+q0q1
+q0_q1
+q0'q1
+q0‘q1
+```
+
+### Alphabets
+___
+The availible symbols to use in the FA. Does not need seperations. Does not accept non-alphabet characters.
+```json
+// OK
+abc
+a b c
+a, b, c
+0, 1
+
+// Not OK
+@ # $ / ?...
+```
+### Initial State
+___
+The start state of the FA. Entered state must be one of the states in the `States` section above.
+```json
+// OK
+q0
+q0 q1 // Only takes q0
+```
+### Final State(s)
+___
+Can be one or more states. Entered states must be a subset of the states in the `States` section above. Parse inputs the same as `States`.
+### Transition Functions
+___
+Each function must be seperated by a newline. There are also multiple accepted separators too. States and symbols must exists in the `States` and `Alphabets` sections.
+
+```json
+// OK
+q0,a=q1
+q0+b->q1
+q1,=q2 // Epsilon
+
+// Not OK
+q0, ab = q1
+...
+```
 
 #### Note: If the data entered is invalid, The form will show this generic error `Something went wrong. Try again.`. This is a Discord limitation.
 ---
