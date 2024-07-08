@@ -136,7 +136,7 @@ class MainScreen(miru_menu.Screen):
         if self.menu.ctx.invoked.name == "fa":
             result = "Deterministic" if self.menu.fa.is_dfa else "Non-Deterministic"
             embed = hikari.Embed(
-                title="Finite Automation Test",
+                title="Finite Automaton Test",
                 color=Color.YELLOW
             ).add_field(
                 "Result",
@@ -146,8 +146,8 @@ class MainScreen(miru_menu.Screen):
         elif self.menu.ctx.invoked.name == "dfa":
             if self.menu.fa.is_nfa:
                 embed = hikari.Embed(
-                    title="Automata Minimization",
-                    description="Can't minimize a non-deterministic automata.",
+                    title="Automaton Minimization",
+                    description="Can't minimize a non-deterministic automaton.",
                     color=Color.RED
                 )
                 embeds.append(embed)
@@ -155,7 +155,7 @@ class MainScreen(miru_menu.Screen):
                 embeds.append(self.minimization_result.get_embed())
             else:
                 embed = hikari.Embed(
-                    title="Automata Minimization",
+                    title="Automaton Minimization",
                     description="This DFA is not minimizable.",
                     color=Color.RED
                 )
@@ -164,8 +164,8 @@ class MainScreen(miru_menu.Screen):
         elif self.menu.ctx.invoked.name == "nfa_to_dfa":
             if self.menu.fa.is_dfa:
                 embed = hikari.Embed(
-                    title="Automata Conversion",
-                    description="Cannot convert an already deterministic automata.",
+                    title="Automaton Conversion",
+                    description="Cannot convert an already deterministic automaton.",
                     color=Color.RED
                 )
                 embeds.append(embed)
@@ -191,7 +191,7 @@ class MainScreen(miru_menu.Screen):
         if isinstance(self.extra, MinimizeButton):
             if modal.fa.is_minimizable:
                 self.extra.disabled = False
-        
+
         await self.menu.update_message(await self.build_content())
         await modal.ctx.interaction.delete_initial_response()
 
