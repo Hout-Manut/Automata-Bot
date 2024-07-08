@@ -18,5 +18,4 @@ def run(bot):
 
 @tasks.task(m=1, auto_start=True)
 async def clear_cache_task() -> None:
-    print("Clearing cache...")
     await history.clear_cache()
