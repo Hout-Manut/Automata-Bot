@@ -75,7 +75,6 @@ The names of all of the states in the FA. Must be separated by spaces, commas, e
 q0 q1
 q0,q1
 q'0-q‘1
-q_0,+-:|!@#$%^&*()`~ q'1
 
 // Not OK
 q0q1

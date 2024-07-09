@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 # Must load enviroments variables before other imports.
 load_dotenv()
 
-TOKEN = os.getenv("TOKEN")
-DEFAULT_GUILDS = os.getenv("GUILDS")
+TOKEN = os.getenv("TOKEN")             # Bot token
+DEFAULT_GUILDS = os.getenv("GUILDS")   # Default guilds (not required)
 
-if DEFAULT_GUILDS is not None and DEFAULT_GUILDS != "":
+if DEFAULT_GUILDS:
     DEFAULT_GUILDS = [int(x) for x in DEFAULT_GUILDS.split(',')]
 
 DB_HOST = os.getenv("DB_HOST")
@@ -37,9 +37,9 @@ from .extensions.error_handler import (
     UserError,
 )
 from .screen import (
-    AutomataMenu, 
-    MainScreen, 
+    AutomataMenu,
+    MainScreen,
     TestStringScreen,
 )
 
-__version__ = "0.9"
+__version__ = "1.0"

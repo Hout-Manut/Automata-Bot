@@ -1,7 +1,7 @@
 import hikari
-import hikari.commands
 import lightbulb
 import miru
+from hikari.commands import CommandChoice
 
 import bot.automata as automata
 from ._history_autocomplete import history_autocomplete
@@ -33,7 +33,11 @@ async def test_fa_cmd(ctx: lightbulb.SlashContext) -> None:
 
 @test_cmd.child
 @lightbulb.option(
-    "recent", "Your recent FA inputs", autocomplete=True, required=False, default=""
+    "recent",
+    "Your recent FA inputs",
+    autocomplete=True,
+    required=False,
+    default="",
 )
 @lightbulb.command("string", "Test if the string is accepted or not")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -45,7 +49,6 @@ async def test_str_cmd(ctx: lightbulb.SlashContext) -> None:
 
     fa = await automata.FA.ask_or_get_fa(ctx)
 
-    # modal.fa.save_to_db(ctx)
     menu = automata.AutomataMenu(fa, ctx, timeout=600)
     builder = await menu.build_response_async(
         ctx.app.d.miru,
@@ -60,7 +63,7 @@ async def test_str_cmd(ctx: lightbulb.SlashContext) -> None:
 async def autocomplete_history(
     opt: hikari.AutocompleteInteractionOption,
     inter: hikari.AutocompleteInteraction,
-) -> list[str]:
+) -> list[CommandChoice]:
     return await history_autocomplete(opt, inter, test_plugin)
 
 

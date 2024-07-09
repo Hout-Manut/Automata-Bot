@@ -1,15 +1,21 @@
+"""
+This module is used to get user's recent FA datas to fill in the recent option in most commands so they can select them there.
+User can manage recent FA data here.
+"""
+
 import asyncio
 from datetime import datetime, timedelta
 
 import hikari
-import hikari.commands
 import lightbulb
 import miru
+from hikari.commands import CommandChoice
 from mysql.connector.cursor import MySQLCursor
 from mysql.connector import Error as SQLError
 
 import bot.automata as automata
 from ._history_autocomplete import history_autocomplete
+
 
 recent_plugin = lightbulb.Plugin('recent')
 
@@ -25,12 +31,9 @@ class RecentView(miru.View):
     ) -> None:
         self.ctx = ctx
         fa, db_data = automata.FA.get_db_fa_data(ctx)
-
         self.fa = fa
         self.db_data = db_data
-
         self.deleted = False
-
         super().__init__(timeout=timeout, autodefer=autodefer)
 
     async def update(self) -> None:
@@ -154,7 +157,7 @@ class RecentView(miru.View):
             update_data = (
                 states, alphabets, initial_state, final_states, tf, current_time,
                 self.db_data['id'], user_id,
-                )
+            )
             cursor.execute(update_query, update_data)
             self.ctx.app.d.db.commit()
         except SQLError as e:
@@ -182,8 +185,8 @@ class RenameModal(miru.Modal):
         label="FA Name",
         placeholder="",
         value="",
-        max_length=80
-    )
+        max_length=80,  # Limit to 80 characters because Discord's limit is 100
+    )                   # and we need room to add delta time too.
 
     def __init__(
         self,
@@ -197,7 +200,7 @@ class RenameModal(miru.Modal):
         super().__init__(title="Edit FA Name", timeout=300)
 
     async def callback(self, ctx: miru.ModalContext) -> None:
-        self.new_fa_name = self._fa_name.value
+        self.new_fa_name = self._fa_name.value or self.db['fa_name']
         self.ctx = ctx
         self.stop()
 
@@ -221,7 +224,7 @@ async def recent_cmd(ctx: lightbulb.SlashContext) -> None:
 async def autocomplete_history(
     opt: hikari.AutocompleteInteractionOption,
     inter: hikari.AutocompleteInteraction,
-) -> list[hikari.commands.CommandChoice]:
+) -> list[CommandChoice]:
     return await history_autocomplete(opt, inter, recent_plugin)
 
 

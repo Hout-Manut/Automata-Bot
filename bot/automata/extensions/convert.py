@@ -1,6 +1,10 @@
+"""
+This module manages the command for converting FA.
+"""
+
 import hikari
-import hikari.commands
 import lightbulb
+from hikari.commands import CommandChoice
 
 import bot.automata as automata
 from ._history_autocomplete import history_autocomplete
@@ -16,7 +20,11 @@ async def convert_cmd(ctx: lightbulb.SlashCommandGroup) -> None: ...
 
 @convert_cmd.child
 @lightbulb.option(
-    "recent", "Your recent FA inputs", autocomplete=True, required=False, default=""
+    "recent",
+    "Your recent FA inputs",
+    autocomplete=True,
+    required=False,
+    default="",
 )
 @lightbulb.command("nfa_to_dfa", "Convert an NFA to a DFA")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -42,7 +50,7 @@ async def nfa_dfa_cmd(ctx: lightbulb.SlashContext) -> None:
 async def autocomplete_history(
     opt: hikari.AutocompleteInteractionOption,
     inter: hikari.AutocompleteInteraction,
-) -> hikari.commands.CommandChoice:
+) -> list[CommandChoice]:
     return await history_autocomplete(opt, inter, convert_plugin)
 
 

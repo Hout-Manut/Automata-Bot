@@ -35,6 +35,7 @@ class ConvertButton(menu.ScreenButton):
         self.menu.fa = new_fa
         self.menu.fa.save_to_db(self.menu.ctx)
         self.disabled = True
+        self.label = "Minimize DFA"
         await self.menu.update_message(await self.screen.build_content(result.get_embed()))
 
 

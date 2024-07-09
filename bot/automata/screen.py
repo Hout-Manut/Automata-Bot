@@ -80,16 +80,6 @@ class MainScreen(miru_menu.Screen):
     async def test_string_callback(self, ctx: miru.ViewContext, btn: miru_menu.ScreenButton) -> None:
         await self.menu.push(TestStringScreen(self.menu, self))
 
-    # @miru_menu.button(label="Convert to DFA")
-    # async def convert_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
-    #     await self.menu.push(TestStringScreen(self.menu, self))
-    #     ...
-
-    # @miru_menu.button(label="Minimize DFA", custom_id="minimize")
-    # async def minimize_callback(self, ctx: miru.ViewContext, btn: menu.ScreenButton) -> None:
-    #     await self.menu.push(TestStringScreen(self.menu, self))
-    #     ...
-
     def __init__(
         self,
         menu: AutomataMenu,

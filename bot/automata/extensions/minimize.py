@@ -1,6 +1,10 @@
+"""
+This module manages the command for minimizing FA.
+"""
+
 import hikari
 import lightbulb
-import miru
+from hikari.commands import CommandChoice
 
 import bot.automata as automata
 from ._history_autocomplete import history_autocomplete
@@ -16,7 +20,11 @@ async def minimize_cmd(ctx: lightbulb.SlashCommandGroup) -> None: ...
 
 @minimize_cmd.child
 @lightbulb.option(
-    "recent", "Your recent FA inputs", autocomplete=True, required=False, default=""
+    "recent",
+    "Your recent FA inputs",
+    autocomplete=True,
+    required=False,
+    default="",
 )
 @lightbulb.command("dfa", "Minimize a DFA")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -42,7 +50,7 @@ async def nfa_cmd(ctx: lightbulb.SlashContext) -> None:
 async def autocomplete_history(
     opt: hikari.AutocompleteInteractionOption,
     inter: hikari.AutocompleteInteraction,
-) -> hikari.commands.CommandChoice:
+) -> list[CommandChoice]:
     return await history_autocomplete(opt, inter, minimize_plugin)
 
 

@@ -5,8 +5,8 @@ import miru
 import mysql.connector
 from mysql.connector import Error as SQLError
 
-import bot.automata as automata
 from bot.automata import (
+    run,
     TOKEN,
     DEFAULT_GUILDS,
     DB_HOST,
@@ -16,6 +16,7 @@ from bot.automata import (
 )
 
 
+# Initialize bot application
 bot = lightbulb.BotApp(
     token=TOKEN,
     default_enabled_guilds=DEFAULT_GUILDS,
@@ -24,14 +25,16 @@ bot = lightbulb.BotApp(
     ignore_bots=True,
 )
 
+
 bot.d.miru = miru.Client(bot, ignore_unknown_interactions=True)
+
 
 try:
     db: mysql.connector.MySQLConnection = mysql.connector.connect(
-        host = DB_HOST,
-        user = DB_USER,
-        password = DB_PASSWORD,
-        database = DB_NAME,
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME,
     )
 
     if db.is_connected():
@@ -49,4 +52,4 @@ bot.load_extensions_from("bot/automata/extensions")
 
 
 if __name__ == '__main__':
-    automata.run(bot)
+    run(bot)

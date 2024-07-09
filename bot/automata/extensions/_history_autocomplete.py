@@ -5,8 +5,8 @@ from typing import Callable
 from datetime import datetime, timedelta
 
 import hikari
-from hikari.commands import CommandChoice
 import lightbulb
+from hikari.commands import CommandChoice
 from mysql.connector import Error as SQLError
 from mysql.connector.cursor import MySQLCursor, RowType
 
@@ -14,23 +14,37 @@ from bot.automata.classes import RegexPatterns
 
 
 class NoItemsFoundError(Exception):
-    pass
+    """
+    Raised when no items are found in the database.
+    """
 
 
-ProcessedQueryT = dict[str, str | tuple[str, int] | tuple[str, int, str] | set[str] | None]
+ProcessedQueryItemT = (
+    str |  # fa_type
+    tuple[str, int] |  # state_num & alphabet_num (operator, value)
+    tuple[str, int, str] |  # date (operator, value, unit)
+    set[str] |  # alphabets
+    None
+)
 """
-Type alias for processed query.
-
-It is a dictionary that holds the result of processing a query. The keys are the type of the query and the values are the result of that query.
+Type alias for processed query item.
 
 The types of the queries are:
 - fa_type: str
 - state_num: tuple[str, int]
+- date: tuple[str, int, str]
 - alphabet_num: tuple[str, int]
 - alphabets: set[str]
 - Each value can be None, meaning that the query did not specify that option.
 """
-ProcessedQueryItemT = str | tuple[str, int] | tuple[str, int, str] | set[str] | None
+
+
+ProcessedQueryT = dict[str, ProcessedQueryItemT | list[ProcessedQueryItemT]]
+"""
+Type alias for processed query.
+
+It is a dictionary that holds the result of processing a query. The keys are the type of the query and the values are the criteria of that query.
+"""
 
 query_cache: dict[int, list[RowType]] = {}
 
@@ -39,10 +53,20 @@ async def cache(
     user_id: int,
     rows: list[RowType]
 ) -> None:
+    """
+    Caches the given rows for the specified user.
+
+    Args:
+        user_id (int): The ID of the user.
+        rows (list[RowType]): The rows to cache.
+    """
     query_cache[user_id] = rows
 
 
 async def clear_cache() -> None:
+    """
+    Clears the cache. This function gets called every minute by the bot.
+    """
     query_cache.clear()
 
 
@@ -112,9 +136,6 @@ async def get_all_fa(
     return history
 
 
-def filter(): ...
-
-
 async def get_full_fa(
     cursor: MySQLCursor,
     user_id: int,
@@ -138,6 +159,9 @@ async def get_full_fa(
         """
     cursor.execute(sql_query, (user_id,))
     rows = cursor.fetchall()
+
+    await cache(user_id, rows)
+
     return rows[:25]
 
 
@@ -146,21 +170,28 @@ def process_query(
 ) -> ProcessedQueryT:
     queries: ProcessedQueryT = {
         "fa_type": None,
-        "state_num": None,
+        "state_num": [],
+        "date": [],
         "alphabet_num": None,
         "alphabets": None,
-        "date": None
     }
 
     dfa_or_nfa = RegexPatterns.DFA_OR_NFA.search(query)
     if dfa_or_nfa:
         queries["fa_type"] = dfa_or_nfa.group(1)
 
-    state_num_match = RegexPatterns.STATE_NUM_QUERY.search(query)
-    if state_num_match:
-        operator = state_num_match.group(1)
-        state_num = state_num_match.group(2)
-        queries["state_num"] = (operator, int(state_num))
+    state_num_match = RegexPatterns.STATE_NUM_QUERY.findall(query)
+    for match in state_num_match:
+        operator = match[0]
+        state_num = match[1]
+        queries["state_num"].append((operator, int(state_num)))
+
+    date_matches = RegexPatterns.DATE_QUERY.findall(query)
+    for date_match in date_matches:
+        operator = date_match[1]
+        value = date_match[2]
+        unit = date_match[3] or "d"
+        queries["date"].append((operator, int(value), unit))
 
     alphabet_num_match = RegexPatterns.ALPHABET_NUM_QUERY.search(query)
     if alphabet_num_match:
@@ -172,14 +203,6 @@ def process_query(
     if alphabets_match:
         alphabets = alphabets_match.group(2)
         queries["alphabets"] = set(alphabets)
-        
-    date_match = RegexPatterns.DATE_QUERY.search(query)
-    if date_match:
-        operator = date_match.group(2)
-        value = date_match.group(3)
-        unit = date_match.group(4) or "d"
-        queries["date"] = (operator, int(value), unit)
-
 
     return queries
 
@@ -202,26 +225,34 @@ async def find_some_fa(
         if processed_query["fa_type"]:
             rows = filter_fa(rows, processed_query["fa_type"])
 
-        if processed_query["state_num"]:
-            rows = filter_state_nums(rows, processed_query["state_num"])
-            
-        if processed_query["date"]:
-            rows = filter_date(rows, processed_query["date"])
+        for q in processed_query["state_num"]:
+            rows = filter_state_nums(rows, q)
+
+        for q in processed_query["date"]:
+            rows = filter_date(rows, q)
 
         filtered_alp_nums = []
         filtered_alp = []
 
         if processed_query["alphabet_num"]:
-            filtered_alp_nums = filter_alphabet_nums(rows, processed_query["alphabet_num"])
+            filtered_alp_nums = filter_alphabet_nums(
+                rows, processed_query["alphabet_num"]
+            )
 
-        if processed_query["alphabets"]: # TODO: Make these 2 works tgt
-            filtered_alp = filter_alphabets(rows, processed_query["alphabets"])
+        if processed_query["alphabets"]:
+            filtered_alp = filter_alphabets(
+                rows, processed_query["alphabets"]
+            )
 
         if filtered_alp_nums and filtered_alp:
-            final_rows = [row for row in rows if row in filtered_alp_nums or row in filtered_alp]
+            final_rows = [
+                row for row in rows
+                if row in filtered_alp_nums
+                or row in filtered_alp
+            ]
         else:
             final_rows = filtered_alp or filtered_alp_nums or rows
-            
+
         if not final_rows:
             raise NoItemsFoundError
     except NoItemsFoundError:
@@ -249,19 +280,24 @@ async def find_some_fa(
 
 
 def row_check(func: Callable[[list[RowType], ProcessedQueryItemT], list[RowType]]):
+    """
+    Decorator check if the given list is empty or not. Raises NoItemsFoundError if empty.
+    """
 
     def wrapper(rows: list[RowType], filter_query: ProcessedQueryItemT) -> list[RowType]:
         if not rows:
             raise NoItemsFoundError
+
         return func(rows, filter_query)
 
     return wrapper
+
 
 @row_check
 def filter_fa(
     rows: list[RowType],
     filter_fa: str
-    ) -> list[RowType]:
+) -> list[RowType]:
     filtered = [row for row in rows if filter_fa in row[1].lower()]
 
     return filtered
@@ -271,45 +307,22 @@ def filter_fa(
 def filter_state_nums(
     rows: list[RowType],
     state_nums: tuple[str, int]
-    ) -> list[RowType]:
-    filtered = []
+) -> list[RowType]:
+    operator, value = state_nums
 
-    if state_nums[0] == ">":
-        for row in rows:
-            states = row[2].split()
-            db_state_nums = len(states)
-            if state_nums[1] < db_state_nums:
-                filtered.append(row)
-
-    elif state_nums[0] == "<":
-        for row in rows:
-            states = row[2].split()
-            db_state_nums = len(states)
-            if state_nums[1] > db_state_nums:
-                filtered.append(row)
-
-    elif state_nums[0] == ">=":
-        for row in rows:
-            states = row[2].split()
-            db_state_nums = len(states)
-            if state_nums[1] <= db_state_nums:
-                filtered.append(row)
-
-    elif state_nums[0] == "<=":
-        for row in rows:
-            states = row[2].split()
-            db_state_nums = len(states)
-            if state_nums[1] >= db_state_nums:
-                filtered.append(row)
-
-    elif state_nums[0] == "=":
-        for row in rows:
-            states = row[2].split()
-            db_state_nums = len(states)
-            if state_nums[1] == db_state_nums:
-                filtered.append(row)
-
-    return filtered
+    match operator:
+        case ">":
+            return [row for row in rows if len(row[2].split()) > value]
+        case "<":
+            return [row for row in rows if len(row[2].split()) < value]
+        case ">=":
+            return [row for row in rows if len(row[2].split()) >= value]
+        case "<=":
+            return [row for row in rows if len(row[2].split()) <= value]
+        case "=":
+            return [row for row in rows if len(row[2].split()) == value]
+        case _:
+            return []
 
 
 @row_check
@@ -339,9 +352,9 @@ def filter_date(
             time = now - delta
             return [row for row in rows if time - overhead <= row[7] <= time]
         case ">":
-            return [row for row in rows if row[7] < now - delta]
+            return [row for row in rows if row[7] < now - delta - overhead]
         case "<":
-            return [row for row in rows if row[7] > now - delta]
+            return [row for row in rows if row[7] > now - delta - overhead]
         case ">=":
             return [row for row in rows if row[7] <= now - delta]
         case "<=":
@@ -355,44 +368,21 @@ def filter_alphabet_nums(
     rows: list[RowType],
     state_nums: tuple[str, int]
 ) -> list[RowType]:
-    filtered = []
+    operator, value = state_nums
 
-    if state_nums[0] == ">":
-        for row in rows:
-            alphabets = row[3].split()
-            db_alphabet_nums = len(alphabets)
-            if state_nums[1] < db_alphabet_nums:
-                filtered.append(row)
-
-    elif state_nums[0] == "<":
-        for row in rows:
-            alphabets = row[3].split()
-            db_alphabet_nums = len(alphabets)
-            if state_nums[1] >= db_alphabet_nums:
-                filtered.append(row)
-
-    elif state_nums[0] == ">=":
-        for row in rows:
-            alphabets = row[3].split()
-            db_alphabet_nums = len(alphabets)
-            if state_nums[1] < db_alphabet_nums:
-                filtered.append(row)
-
-    elif state_nums[0] == "<=":
-        for row in rows:
-            alphabets = row[3].split()
-            db_alphabet_nums = len(alphabets)
-            if state_nums[1] >= db_alphabet_nums:
-                filtered.append(row)
-
-    elif state_nums[0] == "=":
-        for row in rows:
-            alphabets = row[3].split()
-            db_alphabet_nums = len(alphabets)
-            if state_nums[1] == db_alphabet_nums:
-                filtered.append(row)
-
-    return filtered
+    match operator:
+        case ">":
+            return [row for row in rows if len(row[3].split()) > value]
+        case "<":
+            return [row for row in rows if len(row[3].split()) < value]
+        case ">=":
+            return [row for row in rows if len(row[3].split()) >= value]
+        case "<=":
+            return [row for row in rows if len(row[3].split()) <= value]
+        case "=":
+            return [row for row in rows if len(row[3].split()) == value]
+        case _:
+            return []
 
 
 @row_check
@@ -400,8 +390,7 @@ def filter_alphabets(
     rows: list[RowType],
     alphabets: set[str]
 ) -> list[RowType]:
-    filtered = [row for row in rows if alphabets <= set(row[3].split())]
-    return filtered
+    return [row for row in rows if alphabets <= set(row[3].split())]
 
 
 async def history_autocomplete(
@@ -420,9 +409,7 @@ async def history_autocomplete(
             history = await find_some_fa(query, cursor, user_id)
         else:
             history = await get_all_fa(cursor, user_id)
-        # history = await get_all_fa(cursor, user_id)
     except SQLError as e:
-        print(f'Retrieving Data Unsucessfully: {e}')
         choice = CommandChoice(
             name="An error occurred",
             value="0",

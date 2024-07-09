@@ -1,3 +1,7 @@
+"""
+This module is used to handle errors in the program. But handling miru errors barely works.
+"""
+
 import hikari
 import lightbulb
 

@@ -45,15 +45,19 @@ class RegexPatterns:
     """Matches word (`a-zA-z0-9_'‘`)"""
 
     TF = re.compile(
-        r"\b([\w'‘]+)\s*[,\s+]\s*([\w'‘]*)\s*(=|>|->)\s*([\w'‘]+)\b")
+        r"\b([\w'‘]+)\s*[^\w\s]*\s*(\w)?\s*(=|>|->)\s*([\w'‘]+)\b")
     """
     Matches word, followed by `,` or `space`, a word or nothing,
     then any of these [`=`, `>`, `->`] and another word.
     """
 
+    # SUB_SCRIPT = re.compile(r"_[0-9]+")
+
     DFA_OR_NFA = re.compile(r"\b(dfa|nfa)\b")
 
     STATE_NUM_QUERY = re.compile(r"\bstates?(=|>|<|>=|<=)(\d+)\b")
+
+    DATE_QUERY = re.compile(r"\b(date|time)(=|>|<|>=|<=)(\d+)(d|h|m)?\b")
 
     ALPHABET_NUM_QUERY = re.compile(
         r"\b(inpu?t?|alpha?b?e?t?|symb?o?l?s?|chara?c?t?e?r?)s?\b(=|>|<|>=|<=)(\d+)\b")
@@ -61,13 +65,15 @@ class RegexPatterns:
     ALPHABETS_QUERY = re.compile(
         r"\b(inpu?t?|alpha?b?e?t?|symb?o?l?s?|chara?c?t?e?r?)s?\b=(\w+)\b")
 
-    DATE_QUERY = re.compile(r"\b(date|time)(=|>|<|>=|<=)(\d+)(d|h|m)?\b")
-
 
 class FA:
     """
     Class representing a Finite Automaton (FA).
     """
+
+    # Not used for now
+    # SUB_MAP = ("₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉")
+
 
     def __init__(
         self,
@@ -243,6 +249,8 @@ class FA:
         """
         states = list(self.states)
         states.sort()
+
+
         return f"{{`{'`, `'.join(states)}`}}"
 
     @property

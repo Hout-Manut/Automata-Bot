@@ -1,9 +1,10 @@
 import hikari
+import lightbulb
 from lightbulb.ext import tasks
 
 from .extensions import _history_autocomplete as history
 
-def run(bot):
+def run(bot: lightbulb.BotApp) -> None:
     """Starts the bot."""
     tasks.load(bot)
 
