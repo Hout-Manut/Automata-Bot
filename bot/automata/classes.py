@@ -61,6 +61,8 @@ class RegexPatterns:
     ALPHABETS_QUERY = re.compile(
         r"\b(inpu?t?|alpha?b?e?t?|symb?o?l?s?|chara?c?t?e?r?)s?\b=(\w+)\b")
 
+    DATE_QUERY = re.compile(r"\b(date|time)(=|>|<|>=|<=)(\d+)(d|h|m)?\b")
+
 
 class FA:
     """

@@ -2,11 +2,11 @@
 This module is used to get user's recent FA datas to fill in the recent option in most commands so they can select them there.
 """
 from typing import Callable
+from datetime import datetime, timedelta
 
 import hikari
 from hikari.commands import CommandChoice
 import lightbulb
-from datetime import datetime
 from mysql.connector import Error as SQLError
 from mysql.connector.cursor import MySQLCursor, RowType
 
@@ -17,7 +17,7 @@ class NoItemsFoundError(Exception):
     pass
 
 
-ProcessedQueryT = dict[str, str | tuple[str, int] | set[str] | None]
+ProcessedQueryT = dict[str, str | tuple[str, int] | tuple[str, int, str] | set[str] | None]
 """
 Type alias for processed query.
 
@@ -30,7 +30,7 @@ The types of the queries are:
 - alphabets: set[str]
 - Each value can be None, meaning that the query did not specify that option.
 """
-ProcessedQueryItemT = str | tuple[str, int] | set[str] | None
+ProcessedQueryItemT = str | tuple[str, int] | tuple[str, int, str] | set[str] | None
 
 query_cache: dict[int, list[RowType]] = {}
 
@@ -149,6 +149,7 @@ def process_query(
         "state_num": None,
         "alphabet_num": None,
         "alphabets": None,
+        "date": None
     }
 
     dfa_or_nfa = RegexPatterns.DFA_OR_NFA.search(query)
@@ -171,10 +172,16 @@ def process_query(
     if alphabets_match:
         alphabets = alphabets_match.group(2)
         queries["alphabets"] = set(alphabets)
+        
+    date_match = RegexPatterns.DATE_QUERY.search(query)
+    if date_match:
+        operator = date_match.group(2)
+        value = date_match.group(3)
+        unit = date_match.group(4) or "d"
+        queries["date"] = (operator, int(value), unit)
 
 
     return queries
-
 
 
 async def find_some_fa(
@@ -197,13 +204,32 @@ async def find_some_fa(
 
         if processed_query["state_num"]:
             rows = filter_state_nums(rows, processed_query["state_num"])
+            
+        if processed_query["date"]:
+            rows = filter_date(rows, processed_query["date"])
+
+        filtered_alp_nums = []
+        filtered_alp = []
 
         if processed_query["alphabet_num"]:
-            rows = filter_alphabet_nums(rows, processed_query["alphabet_num"])
+            filtered_alp_nums = filter_alphabet_nums(rows, processed_query["alphabet_num"])
+            print(filtered_alp_nums)
 
-        elif processed_query["alphabets"]: # TODO: Make these 2 works tgt
-            rows = filter_alphabets(rows, processed_query["alphabets"])
+        if processed_query["alphabets"]: # TODO: Make these 2 works tgt
+            filtered_alp = filter_alphabets(rows, processed_query["alphabets"])
+            print(filtered_alp)
 
+        if filtered_alp_nums and filtered_alp:
+            print(filtered_alp_nums, filtered_alp)
+            final_rows = filtered_alp_nums
+            for row in filtered_alp:
+                if row not in final_rows:
+                    final_rows.append(row)
+        else:
+            final_rows = filtered_alp or filtered_alp_nums or rows
+            
+        if not final_rows:
+            raise NoItemsFoundError
     except NoItemsFoundError:
         choice = CommandChoice(
             name="No FA data found for that query.",
@@ -211,7 +237,7 @@ async def find_some_fa(
         )
         return [choice]
 
-    for row in rows:
+    for row in final_rows:
         fa_id = row[0]
         fa_name = row[1]
         updated_at = row[7]
@@ -293,6 +319,44 @@ def filter_state_nums(
 
 
 @row_check
+def filter_date(
+    rows: list[RowType],
+    date: tuple[str, int, str]
+) -> list[RowType]:
+    operator, value, unit = date
+
+    match unit:
+        case "d":
+            delta = timedelta(days=value)
+            overhead = timedelta(days=1)
+        case "h":
+            delta = timedelta(hours=value)
+            overhead = timedelta(hours=1)
+        case "m":
+            delta = timedelta(minutes=value)
+            overhead = timedelta(minutes=1)
+        case _:
+            return []
+
+    now = datetime.now()
+
+    match operator:
+        case "=":
+            time = now - delta
+            return [row for row in rows if time - overhead <= row[7] <= time]
+        case ">":
+            return [row for row in rows if row[7] < now - delta]
+        case "<":
+            return [row for row in rows if row[7] > now - delta]
+        case ">=":
+            return [row for row in rows if row[7] <= now - delta]
+        case "<=":
+            return [row for row in rows if row[7] >= now - delta]
+        case _:
+            return []
+
+
+@row_check
 def filter_alphabet_nums(
     rows: list[RowType],
     state_nums: tuple[str, int]
@@ -344,7 +408,6 @@ def filter_alphabets(
 ) -> list[RowType]:
     filtered = [row for row in rows if alphabets <= set(row[3].split())]
     return filtered
-
 
 
 async def history_autocomplete(
