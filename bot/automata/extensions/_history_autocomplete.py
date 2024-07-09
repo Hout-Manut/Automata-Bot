@@ -213,18 +213,12 @@ async def find_some_fa(
 
         if processed_query["alphabet_num"]:
             filtered_alp_nums = filter_alphabet_nums(rows, processed_query["alphabet_num"])
-            print(filtered_alp_nums)
 
         if processed_query["alphabets"]: # TODO: Make these 2 works tgt
             filtered_alp = filter_alphabets(rows, processed_query["alphabets"])
-            print(filtered_alp)
 
         if filtered_alp_nums and filtered_alp:
-            print(filtered_alp_nums, filtered_alp)
-            final_rows = filtered_alp_nums
-            for row in filtered_alp:
-                if row not in final_rows:
-                    final_rows.append(row)
+            final_rows = [row for row in rows if row in filtered_alp_nums or row in filtered_alp]
         else:
             final_rows = filtered_alp or filtered_alp_nums or rows
             
