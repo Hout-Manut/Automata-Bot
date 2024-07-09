@@ -44,11 +44,22 @@ class RegexPatterns:
     FINAL_STATES = re.compile(r"\b[\w'‘]+\b")
     """Matches word (`a-zA-z0-9_'‘`)"""
 
-    TF = re.compile(r"\b([\w'‘]+)\s*[,\s+]\s*([\w'‘]*)\s*(=|>|->)\s*([\w'‘]+)\b")
+    TF = re.compile(
+        r"\b([\w'‘]+)\s*[,\s+]\s*([\w'‘]*)\s*(=|>|->)\s*([\w'‘]+)\b")
     """
     Matches word, followed by `,` or `space`, a word or nothing,
     then any of these [`=`, `>`, `->`] and another word.
     """
+
+    DFA_OR_NFA = re.compile(r"\b(dfa|nfa)\b")
+
+    STATE_NUM_QUERY = re.compile(r"\bstates?(=|>|<|>=|<=)(\d+)\b")
+
+    ALPHABET_NUM_QUERY = re.compile(
+        r"\b(inpu?t?|alpha?b?e?t?|symb?o?l?s?|chara?c?t?e?r?)s?\b(=|>|<|>=|<=)(\d+)\b")
+
+    ALPHABETS_QUERY = re.compile(
+        r"\b(inpu?t?|alpha?b?e?t?|symb?o?l?s?|chara?c?t?e?r?)s?\b=(\w+)\b")
 
 
 class FA:
@@ -153,10 +164,10 @@ class FA:
                 final_states = %s AND
                 transitions = %s
             """
-            data = (user_id, states, alphabets, initial_state, final_states, tf)
+            data = (user_id, states, alphabets,
+                    initial_state, final_states, tf)
             cursor.execute(check_query, data)
             result = cursor.fetchall()
-            
 
             if result:
                 for fa_id in result:
@@ -264,7 +275,8 @@ class FA:
         """
         tf = ""
         sorted_dict = dict(
-            sorted(self.t_func.items(), key=lambda item: (item[0][0], item[0][1]))
+            sorted(self.t_func.items(), key=lambda item: (
+                item[0][0], item[0][1]))
         )
         if self.is_dfa:
             for (from_state, symbol), to_state in sorted_dict.items():
@@ -345,7 +357,8 @@ class FA:
             FAConversionResult: A result object that contains informations of the conversion.
         """
         initial_closure = self.epsilon_closure(self.initial_state)
-        dfa_states = {frozenset(initial_closure): "q'0"}  # Custom prime state names
+        # Custom prime state names
+        dfa_states = {frozenset(initial_closure): "q'0"}
         dfa_states_list = [initial_closure]
         dfa_transition_functions: TransitionT = {}
         dfa_final_states = set()
@@ -470,7 +483,7 @@ class FA:
     def get_minimized_dfa(self) -> tuple[FA, FAMinimizationResult]:
         """
         Minimize the current DFA object.
-        
+
         Returns:
             FA: a new DFA object.
             FAMinimizationResult: a result object containing the details of the minimization.
@@ -495,7 +508,8 @@ class FA:
 
         new_states = set(state_map[frozenset(part)] for part in partitions)
         new_initial_state = state_map[
-            next(frozenset(part) for part in partitions if self.initial_state in part)
+            next(frozenset(part)
+                 for part in partitions if self.initial_state in part)
         ]
         new_final_states = set(
             state_map[frozenset(part)]
@@ -508,7 +522,8 @@ class FA:
             current = next(iter(part))
             for symbol in self.alphabets:
                 if (current, symbol) in reachable_transition_functions:
-                    next_states = reachable_transition_functions[(current, symbol)]
+                    next_states = reachable_transition_functions[(
+                        current, symbol)]
                     for next_state in next_states:
                         new_part = next(
                             frozenset(part) for part in partitions if next_state in part
@@ -614,7 +629,7 @@ class FA:
         """
 
         title = "Deterministic" if self.is_dfa else "Non-deterministic"
-        title += " Finite Automation"
+        title += " Finite Automaton"
         embed = hikari.Embed(title=title, description=None, color=color)
 
         name = "State" if len(self.states) == 1 else "States"
@@ -884,7 +899,6 @@ class FA:
         except error.InvalidDBQuery:
             raise
 
-
     @staticmethod
     def get_fa_from_db(fa_id: int, ctx: lightbulb.SlashContext) -> FA:
         try:
@@ -1030,7 +1044,8 @@ class FA:
 
         # Normalize initial and final states
         normalized_initial_state = state_map[self.initial_state]
-        normalized_final_states = {state_map[state] for state in self.final_states}
+        normalized_final_states = {state_map[state]
+                                   for state in self.final_states}
 
         # Return normalized DFA representation
         return (
@@ -1081,7 +1096,7 @@ class FAConversionResult:
         return string
 
     def get_embed(self) -> hikari.Embed:
-        embed = hikari.Embed(title="Automata Conversion", color=Color.YELLOW)
+        embed = hikari.Embed(title="Automaton Conversion", color=Color.YELLOW)
         name = "Closure" if len(self.state_names) == 1 else "Closures"
         embed.add_field(f"State {name}", self.state_names_str)
         return embed
@@ -1090,7 +1105,7 @@ class FAConversionResult:
     def get_str_from_frozenset(states: frozenset[str]) -> str:
         if len(states) == 0:
             return "Trap State"
-        
+
         buffer = []
         for state in states:
             state = "Trap State" if state == "" else state
@@ -1130,7 +1145,8 @@ class FAMinimizationResult:
         return f'{{{", ".join(buffer)}}}'
 
     def get_embed(self) -> hikari.Embed:
-        embed = hikari.Embed(title="Automaton Minimization", color=Color.YELLOW)
+        embed = hikari.Embed(
+            title="Automaton Minimization", color=Color.YELLOW)
         name = "State" if len(self.deleted_states) == 1 else "States"
         embed.add_field(f"Minimized {name}", self.deleted_states_str)
         name = "State" if len(self.deleted_states) == 1 else "States"
