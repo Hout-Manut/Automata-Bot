@@ -350,7 +350,7 @@ class FA:
         return closure
 
     def move(self, states: set[str], symbol: str) -> set[str]:
-        """Gets a state return all next states it can moves to."""
+        """Gets a state, return all next states it can moves to."""
         new_states = set()
         for state in states:
             if (state, symbol) in self.t_func:
@@ -837,7 +837,7 @@ class FA:
             for symbol in inputs:
                 if (state, symbol) not in transitions:
                     return False  # Missing transitions: NFA
-                next_states = transitions[(state, symbol)]
+                next_states = transitions[(state, symbol)] or set()
                 if len(next_states) != 1:
                     return False  # Transition of a state and symbol leads to 0 or more than 1 states: NFA
 
